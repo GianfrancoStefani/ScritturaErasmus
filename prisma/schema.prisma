@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id             String    @id @default(cuid())
+  title          String
+  titleEn        String
+  acronym        String
+  startDate      DateTime
+  duration       Int
+  endDate        DateTime
+  nationalAgency String
+  language       String
+  
+  works          Work[]
+  partners       Partner[]
+  modules        Module[]  // Modules directly attached to Project
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Theme {
+  id        String   @id @default(cuid())
+  name      String
+  projectId String
+  
+  // Note: Request mentioned "Theme" as item 2. Assuming it links to Project or serves as a tag.
+  // Simplifying to just a standalone table or field if needed, but creating a Model for flexibility.
+}
+
+model Work {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title         String    // "Modulo" name in request structure (Works)
+  startDate     DateTime
+  endDate       DateTime
+  budget        Float
+  
+  tasks         Task[]
+  modules       Module[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  workId        String
+  work          Work      @relation(fields: [workId], references: [id], onDelete: Cascade)
+  title         String
+  startDate     DateTime
+  endDate       DateTime
+  budget        Float
+  
+  activities    Activity[]
+  modules       Module[]
+  assignments   Assignment[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Activity {
+  id                 String    @id @default(cuid())
+  taskId             String
+  task               Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title              String
+  venue              String?
+  estimatedStartDate DateTime
+  estimatedEndDate   DateTime
+  leadingOrgId       String?   
+  leadingOrg         Partner?  @relation("LeadingActivity", fields: [leadingOrgId], references: [id])
+  participatingOrgIds String[] // IDs of partners
+  allocatedAmount    Float
+  expectedResults    String? // max 250 char
+  
+  modules            Module[]
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model Partner {
+  id             String    @id @default(cuid())
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  name           String
+  nation         String
+  city           String
+  role           String    // Coordinator, Partner, etc.
+  type           String    // University, NPO, etc.
+  budget         Float
+  website        String?
+  contactName    String?
+  email          String?
+  logo           String?
+
+  users          User[]
+  leadingActivities Activity[] @relation("LeadingActivity")
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model User {
+  id             String    @id @default(cuid())
+  partnerId      String
+  partner        Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  
+  role           String    // Hierarchical role in partner/project
+  surname        String
+  name           String
+  prefix         String?
+  photo          String?
+  email          String    @unique
+  phone          String?
+  landline       String?
+  username       String    @unique
+  password       String    
+  
+  assignments    Assignment[]
+  textComponents TextComponent[]
+  comments       Comment[]
+  ratings        Rating[]
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Assignment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  months    String?  // JSON string storing active months
+  days      Float
+  dailyRate Float?   // For cost calculation
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Module {
+  id          String   @id @default(cuid())
+  
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workId      String?
+  work        Work?    @relation(fields: [workId], references: [id], onDelete: Cascade)
+  taskId      String?
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  activityId  String?
+  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  title       String
+  subtitle    String?
+  order       Int      @default(0)
+  officialText String?
+  maxChars    Int?
+  
+  status      String   @default("TO_DONE") // TO_DONE, UNDER_REVIEW, DONE, AUTHORIZED
+  completion  Int      @default(0)
+  
+  components  TextComponent[]
+  attachments Attachment[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TextComponent {
+  id          String   @id @default(cuid())
+  moduleId    String
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  
+  type        String   // USER_TEXT, COORD_NOTE, USER_NOTE
+  content     String   
+  order       Int      @default(0)
+  
+  status      String?  // ACCEPTED, TO_INTEGRATE, STANDBY
+  
+  comments    Comment[]
+  ratings     Rating[]
+  attachments Attachment[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Comment {
+  id              String        @id @default(cuid())
+  textComponentId String
+  textComponent   TextComponent @relation(fields: [textComponentId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  content         String
+  createdAt       DateTime      @default(now())
+}
+
+model Rating {
+  id              String        @id @default(cuid())
+  textComponentId String
+  textComponent   TextComponent @relation(fields: [textComponentId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  value           Int           // 1-5
+  createdAt       DateTime      @default(now())
+  
+  @@unique([textComponentId, userId])
+}
+
+model Attachment {
+  id              String   @id @default(cuid())
+  url             String
+  name            String
+  moduleId        String?
+  module          Module?  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  textComponentId String?
+  textComponent   TextComponent? @relation(fields: [textComponentId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+}
