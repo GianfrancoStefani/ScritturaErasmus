@@ -6,6 +6,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import clsx from "clsx";
+import { DeleteButton } from "@/components/ui/DeleteButton";
+import { deleteProject } from "@/app/actions/deleteProject";
+import { deleteModule } from "@/app/actions/deleteModule";
 
 async function getProject(id: string) {
   return await prisma.project.findUnique({
@@ -59,6 +62,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             <div className="flex gap-2">
                  <Button variant="secondary">Manage Partners</Button>
                  <Button>Generate Report</Button>
+                 <DeleteButton 
+                    id={project.id} 
+                    onDelete={deleteProject} 
+                    redirectAfter="/dashboard/projects"
+                    confirmMessage="Are you sure you want to delete this ENTIRE project?"
+                 />
             </div>
         </div>
       </div>
@@ -159,7 +168,15 @@ function ModuleCard({ module, projectId }: { module: any, projectId: string }) {
         <Card className="hover:shadow-md transition-shadow cursor-pointer group">
             <div className="flex justify-between items-start mb-2">
                 <FileText size={20} className="text-blue-500" />
-                <StatusBadge status={module.status} />
+                <div className="flex items-center gap-2">
+                    <StatusBadge status={module.status} />
+                    <DeleteButton 
+                        id={module.id} 
+                        onDelete={deleteModule.bind(null, projectId)} 
+                        className="opacity-0 group-hover:opacity-100 text-red-500 -mr-2"
+                        confirmMessage="Delete this module?"
+                    />
+                </div>
             </div>
             <h4 className="font-bold text-slate-800 line-clamp-1">{module.title}</h4>
             <p className="text-xs text-slate-400 line-clamp-2 mt-1">{module.subtitle || "No subtitle"}</p>
@@ -177,11 +194,17 @@ function ModuleRow({ module, projectId }: { module: any, projectId: string }) {
                    {module.subtitle && <p className="text-xs text-slate-400">{module.subtitle}</p>}
                 </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
                 <StatusBadge status={module.status} />
                 <Link href={`/dashboard/projects/${projectId}/modules/${module.id}`}>
                     <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100">Edit</Button>
                 </Link>
+                <DeleteButton 
+                    id={module.id} 
+                    onDelete={deleteModule.bind(null, projectId)} 
+                    className="opacity-0 group-hover:opacity-100 text-red-500"
+                    redirectAfter={undefined}
+                />
             </div>
         </div>
     )

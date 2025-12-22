@@ -33,6 +33,7 @@ export async function createProject(formData: FormData) {
                 title: "Project Management",
                 startDate,
                 endDate,
+                budget: 0,
                 modules: {
                     create: {
                         title: "Project Handbook",
