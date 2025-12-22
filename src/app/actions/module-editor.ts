@@ -160,3 +160,19 @@ export async function rateComponent(textComponentId: string, userId: string, val
         return { error: "Failed to rate" };
     }
 }
+
+export async function reorderContributions(items: { id: string, order: number }[]) {
+    try {
+        await prisma.$transaction(
+            items.map(item => 
+                prisma.textComponent.update({
+                    where: { id: item.id },
+                    data: { order: item.order }
+                })
+            )
+        );
+        return { success: true };
+    } catch (error) {
+        return { error: "Failed to reorder" };
+    }
+}

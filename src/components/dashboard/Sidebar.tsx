@@ -9,7 +9,8 @@ import {
     Settings, 
     LogOut,
     Calendar,
-    Wallet
+    Wallet,
+    Copy
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import clsx from "clsx";
@@ -18,6 +19,7 @@ const navItems = [
   { href: '/dashboard', label: 'Overview', icon: Home },
   { href: '/dashboard/kanban', label: 'Kanban Board', icon: FolderKanban },
   { href: '/dashboard/works', label: 'Works & Budget', icon: Wallet },
+  { href: '/dashboard/templates', label: 'Templates', icon: Copy }, // Added Templates link
   { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
   { href: '/dashboard/partners', label: 'Partners', icon: Users },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },

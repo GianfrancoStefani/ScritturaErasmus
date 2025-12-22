@@ -65,22 +65,20 @@ export function ContributionStream({
         const {active, over} = event;
         
         if (over && active.id !== over.id) {
-            setOrderedComponents((items) => {
-                const oldIndex = items.findIndex(i => i.id === active.id);
-                const newIndex = items.findIndex(i => i.id === over.id);
-                const newItems = arrayMove(items, oldIndex, newIndex);
-                
-                // Prepare update payload
-                const updatePayload = newItems.map((item, index) => ({
-                    id: item.id,
-                    order: index + 1 // 1-based ordering
-                }));
+            const oldIndex = orderedComponents.findIndex(i => i.id === active.id);
+            const newIndex = orderedComponents.findIndex(i => i.id === over.id);
+            const newItems = arrayMove(orderedComponents, oldIndex, newIndex);
+            
+            setOrderedComponents(newItems);
 
-                // Trigger server action in background without awaiting (optimistic UI)
-                reorderContributions(updatePayload);
+            // Prepare update payload
+            const updatePayload = newItems.map((item, index) => ({
+                id: item.id,
+                order: index + 1 // 1-based ordering
+            }));
 
-                return newItems;
-            });
+            // Trigger server action in background (optimistic UI)
+            await reorderContributions(updatePayload);
         }
     }
 
@@ -110,6 +108,7 @@ export function ContributionStream({
                 )}
 
                 <DndContext 
+                    id="dnd-context"
                     sensors={sensors}
                     collisionDetection={closestCenter}
                     onDragEnd={handleDragEnd}

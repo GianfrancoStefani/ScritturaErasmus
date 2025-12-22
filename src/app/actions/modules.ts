@@ -8,6 +8,7 @@ const ModuleSchema = z.object({
   title: z.string().min(1, "Title is required"),
   subtitle: z.string().optional(),
   maxChars: z.coerce.number().optional(), // Coerce form data string to number
+  guidelines: z.string().optional(),
   parentId: z.string(), // ID of Project, Work, Task, or Activity
   parentType: z.enum(['PROJECT', 'WORK', 'TASK', 'ACTIVITY']),
 });
@@ -17,6 +18,7 @@ export async function createModule(prevState: any, formData: FormData) {
         title: formData.get("title"),
         subtitle: formData.get("subtitle") || undefined,
         maxChars: formData.get("maxChars") || undefined,
+        guidelines: formData.get("guidelines") || undefined,
         parentId: formData.get("parentId"),
         parentType: formData.get("parentType"),
     };
@@ -27,7 +29,7 @@ export async function createModule(prevState: any, formData: FormData) {
         return { error: validated.error.flatten().fieldErrors };
     }
 
-    const { title, subtitle, maxChars, parentId, parentType } = validated.data;
+    const { title, subtitle, maxChars, guidelines, parentId, parentType } = validated.data;
 
     try {
         // Construct connect object dynamically
@@ -55,6 +57,7 @@ export async function createModule(prevState: any, formData: FormData) {
                 title,
                 subtitle,
                 maxChars: maxChars ? Number(maxChars) : null,
+                guidelines,
                 order: (lastModule?.order || 0) + 1,
                 ...connectData
             }
@@ -79,6 +82,7 @@ const UpdateModuleSchema = z.object({
     title: z.string().min(1),
     subtitle: z.string().optional(),
     maxChars: z.coerce.number().optional(),
+    guidelines: z.string().optional(),
 });
 
 export async function updateModuleMetadata(prevState: any, formData: FormData) {
@@ -87,6 +91,7 @@ export async function updateModuleMetadata(prevState: any, formData: FormData) {
         title: formData.get("title"),
         subtitle: formData.get("subtitle") || undefined,
         maxChars: formData.get("maxChars") || undefined,
+        guidelines: formData.get("guidelines") || undefined,
     };
 
     const validated = UpdateModuleSchema.safeParse(rawData);
@@ -98,7 +103,8 @@ export async function updateModuleMetadata(prevState: any, formData: FormData) {
             data: {
                 title: validated.data.title,
                 subtitle: validated.data.subtitle,
-                maxChars: validated.data.maxChars ? Number(validated.data.maxChars) : null
+                maxChars: validated.data.maxChars ? Number(validated.data.maxChars) : null,
+                guidelines: validated.data.guidelines
             }
         });
         revalidatePath("/dashboard/projects/[id]", 'page'); 

@@ -21,6 +21,9 @@ model Project {
   works          Work[]
   partners       Partner[]
   modules        Module[]  // Modules directly attached to Project
+  sections       Section[]
+  
+  isTemplate     Boolean   @default(false)
   
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -39,7 +42,11 @@ model Work {
   id            String    @id @default(cuid())
   projectId     String
   project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title         String    // "Modulo" name in request structure (Works)
+  sectionId     String?
+  section       Section?  @relation(fields: [sectionId], references: [id])
+  
+  title         String
+  description   String? // "Modulo" name in request structure (Works)
   startDate     DateTime
   endDate       DateTime
   budget        Float
@@ -64,6 +71,21 @@ model Task {
   modules       Module[]
   assignments   Assignment[]
 
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Section {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title         String
+  order         Int       @default(0)
+  
+  modules       Module[]
+  works         Work[]
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -156,6 +178,8 @@ model Module {
   
   projectId   String?
   project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sectionId   String?
+  section     Section? @relation(fields: [sectionId], references: [id])
   workId      String?
   work        Work?    @relation(fields: [workId], references: [id], onDelete: Cascade)
   taskId      String?
@@ -171,6 +195,7 @@ model Module {
   
   status      String   @default("TO_DONE") // TO_DONE, UNDER_REVIEW, DONE, AUTHORIZED
   completion  Int      @default(0)
+  guidelines  String?  // Funding body instructions
   
   components  TextComponent[]
   attachments Attachment[]

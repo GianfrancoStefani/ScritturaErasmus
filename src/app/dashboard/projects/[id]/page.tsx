@@ -10,6 +10,8 @@ import { DeleteButton } from "@/components/ui/DeleteButton";
 import { deleteProject } from "@/app/actions/deleteProject";
 import { deleteModule } from "@/app/actions/deleteModule";
 import { CreateModuleButton, EditModuleButton } from "@/components/modules/ModuleForm";
+import { CreateSectionButton } from "@/components/projects/CreateSectionButton";
+import { SaveTemplateButton } from "@/components/projects/SaveTemplateButton";
 
 async function getProject(id: string) {
   const moduleInclude = {
@@ -21,7 +23,30 @@ async function getProject(id: string) {
   return await prisma.project.findUnique({
     where: { id },
     include: {
+      sections: {
+        orderBy: { order: 'asc' },
+        include: {
+            modules: { include: moduleInclude, orderBy: { order: 'asc' } },
+            works: {
+                orderBy: { startDate: 'asc' },
+                include: {
+                    modules: { include: moduleInclude },
+                    tasks: {
+                        include: {
+                            modules: { include: moduleInclude },
+                            activities: {
+                                include: { 
+                                    modules: { include: moduleInclude }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+      },
       works: {
+        where: { sectionId: null }, // Only fetch unassigned works here
         orderBy: { startDate: 'asc' },
         include: {
           modules: { include: moduleInclude },
@@ -38,6 +63,7 @@ async function getProject(id: string) {
         }
       },
       modules: { 
+          where: { sectionId: null }, // Only fetch unassigned modules here
           orderBy: { order: 'asc' },
           include: moduleInclude
       },
@@ -72,6 +98,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                 <h1 className="text-3xl font-bold text-slate-900">{project.title}</h1>
             </div>
             <div className="flex gap-2">
+                 <CreateSectionButton projectId={project.id} />
                  <Link href={`/dashboard/projects/${project.id}/partners`}>
                     <Button variant="secondary">Manage Partners</Button>
                  </Link>
@@ -81,6 +108,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                  <Link href={`/dashboard/projects/${project.id}/export`}>
                     <Button variant="secondary">Export PDF</Button>
                  </Link>
+                 <SaveTemplateButton projectId={project.id} projectTitle={project.title} />
                  <DeleteButton 
                     id={project.id} 
                     onDelete={deleteProject} 
@@ -91,21 +119,48 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         </div>
       </div>
 
-      {/* Project Level Modules */}
-      <Section title="Project Management Modules">
-          <div className="flex justify-end mb-2">
-              <CreateModuleButton parentId={project.id} parentType="PROJECT" />
-          </div>
-          {project.modules.length === 0 ? (
-               <div className="text-center py-4 bg-slate-50 rounded border border-dashed border-slate-300 text-sm text-slate-500">
-                   No project-level modules yet.
-               </div>
-          ) : (
+      {/* Sections */}
+      {project.sections?.map((section) => (
+          <CollapsibleSection key={section.id} title={section.title} defaultOpen={true}>
+              {/* Section Modules */}
+              {section.modules.length > 0 && (
+                  <div className="mb-6">
+                      <h4 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">Modules</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {section.modules.map(m => <ModuleCard key={m.id} module={m} projectId={project.id} />)}
+                      </div>
+                  </div>
+              )}
+
+              {/* Section Work Packages */}
+              {section.works.length > 0 && (
+                  <div className="space-y-6">
+                        <h4 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">Work Packages</h4>
+                        {section.works.map((work, idx) => (
+                             <WorkPackageCard key={work.id} work={work} index={idx} projectId={project.id} />
+                        ))}
+                  </div>
+              )}
+              
+              {section.modules.length === 0 && section.works.length === 0 && (
+                  <div className="text-center py-6 text-slate-400 italic bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                      Empty Section
+                  </div>
+              )}
+          </CollapsibleSection>
+      ))}
+
+      {/* Project Level Modules (Unassigned) */}
+      {(project.modules.length > 0) && (
+        <Section title="Project Management Modules">
+            <div className="flex justify-end mb-2">
+                <CreateModuleButton parentId={project.id} parentType="PROJECT" />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {project.modules.map(m => <ModuleCard key={m.id} module={m} projectId={project.id} />)}
             </div>
-          )}
-      </Section>
+        </Section>
+      )}
 
       {/* Work Packages */}
       <div className="space-y-6">
@@ -117,80 +172,10 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         </div>
 
         {project.works.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 italic">No work packages yet.</div>
+            <div className="text-center py-10 text-slate-400 italic">No unassigned work packages.</div>
         ) : (
             project.works.map((work, idx) => (
-                <Card key={work.id} className="border-l-4 border-l-indigo-500">
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800">WP{idx+1}: {work.title}</h3>
-                            <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded">
-                                {format(work.startDate, 'MM/yy')} - {format(work.endDate, 'MM/yy')}
-                            </span>
-                        </div>
-                        <div className="flex gap-2">
-                            <CreateModuleButton parentId={work.id} parentType="WORK" className="text-xs h-8" />
-                            <Link href={`/dashboard/works/${work.id}`}>
-                                <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
-                                    Manage Tasks
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                    
-                    {/* WP Modules */}
-                    {(work.modules.length > 0 || true) && (
-                        <div className="mb-4 space-y-2">
-                             <div className="flex justify-between items-center bg-slate-50 p-1 px-2 rounded">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase">General Modules</h4>
-                             </div>
-                             {work.modules.map(m => <ModuleRow key={m.id} module={m} projectId={project.id} />)}
-                        </div>
-                    )}
-
-                    {/* Tasks */}
-                    <div className="pl-4 border-l-2 border-slate-100 space-y-6 mt-4">
-                        {work.tasks.map((task, tIdx) => (
-                            <div key={task.id}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-bold text-slate-700 text-sm">Task {idx+1}.{tIdx+1}:</span>
-                                        <span className="text-slate-600 text-sm">{task.title}</span>
-                                    </div>
-                                    <CreateModuleButton parentId={task.id} parentType="TASK" className="h-6 text-[10px] py-0" />
-                                </div>
-                                
-                                {/* Task Modules */}
-                                {task.modules.length > 0 && (
-                                    <div className="ml-4 space-y-2 mb-2">
-                                         {task.modules.map(m => <ModuleRow key={m.id} module={m} projectId={project.id} />)}
-                                    </div>
-                                )}
-
-                                {/* Activities */}
-                                {task.activities.length > 0 && (
-                                     <div className="ml-6 space-y-3 mt-2">
-                                        {task.activities.map((act, aIdx) => (
-                                            <div key={act.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 relative group/activity">
-                                                <div className="flex items-center justify-between mb-2">
-                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-500 text-xs">Activity {idx+1}.{tIdx+1}.{aIdx+1}</span>
-                                                        <span className="text-slate-800 text-sm font-medium">{act.title}</span>
-                                                     </div>
-                                                     <CreateModuleButton parentId={act.id} parentType="ACTIVITY" className="h-6 text-[10px] py-0 opacity-0 group-hover/activity:opacity-100 transition-opacity" />
-                                                </div>
-                                                {/* Activity Modules */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                                                     {act.modules.map(m => <ModuleRow key={m.id} module={m} projectId={project.id} />)}
-                                                </div>
-                                            </div>
-                                        ))}
-                                     </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </Card>
+                <WorkPackageCard key={work.id} work={work} index={idx} projectId={project.id} />
             ))
         )}
       </div>
@@ -205,6 +190,109 @@ function Section({ title, children }: { title: string, children: React.ReactNode
             {children}
         </div>
     )
+}
+
+function CollapsibleSection({ title, children, defaultOpen = false }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) {
+    // Note: This is an async server component so we can't use useState directly in the component body
+    // unless we make it a client component. 
+    // BUT Section was Server Component. 
+    // We should make a client wrapper for the collapsible part OR just use "details/summary".
+    // "details" is native and works without client-side JS (mostly).
+    
+    return (
+        <details className="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6 open:ring-2 open:ring-indigo-100" open={defaultOpen}>
+            <summary className="flex items-center justify-between p-4 cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors list-none select-none">
+                <div className="flex items-center gap-3">
+                     <div className="p-1 bg-white rounded border border-slate-200 text-indigo-600">
+                        <Layers size={16} />
+                     </div>
+                     <span className="font-exbold text-lg text-slate-800">{title}</span>
+                </div>
+                <div className="transform group-open:rotate-180 transition-transform text-slate-400">
+                    <ArrowLeft size={16} className="-rotate-90" />
+                </div>
+            </summary>
+            <div className="p-4 border-t border-slate-100">
+                {children}
+            </div>
+        </details>
+    );
+}
+
+function WorkPackageCard({ work, index, projectId }: { work: any, index: number, projectId: string }) {
+    return (
+        <Card className="border-l-4 border-l-indigo-500">
+            <div className="flex justify-between items-start mb-4">
+                <div>
+                    <h3 className="text-lg font-bold text-slate-800">WP{index+1}: {work.title}</h3>
+                    <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded">
+                        {work.startDate ? format(new Date(work.startDate), 'MM/yy') : 'N/A'} - {work.endDate ? format(new Date(work.endDate), 'MM/yy') : 'N/A'}
+                    </span>
+                </div>
+                <div className="flex gap-2">
+                    <CreateModuleButton parentId={work.id} parentType="WORK" className="text-xs h-8" />
+                    <Link href={`/dashboard/works/${work.id}`}>
+                        <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+                            Manage Tasks
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+            
+            {/* WP Modules */}
+            {(work.modules.length > 0) && (
+                <div className="mb-4 space-y-2">
+                        <div className="flex justify-between items-center bg-slate-50 p-1 px-2 rounded">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase">General Modules</h4>
+                        </div>
+                        {work.modules.map((m: any) => <ModuleRow key={m.id} module={m} projectId={projectId} />)}
+                </div>
+            )}
+
+            {/* Tasks */}
+            <div className="pl-4 border-l-2 border-slate-100 space-y-6 mt-4">
+                {work.tasks.map((task: any, tIdx: number) => (
+                    <div key={task.id}>
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-700 text-sm">Task {index+1}.{tIdx+1}:</span>
+                                <span className="text-slate-600 text-sm">{task.title}</span>
+                            </div>
+                            <CreateModuleButton parentId={task.id} parentType="TASK" className="h-6 text-[10px] py-0" />
+                        </div>
+                        
+                        {/* Task Modules */}
+                        {task.modules.length > 0 && (
+                            <div className="ml-4 space-y-2 mb-2">
+                                    {task.modules.map((m: any) => <ModuleRow key={m.id} module={m} projectId={projectId} />)}
+                            </div>
+                        )}
+
+                        {/* Activities */}
+                        {task.activities.length > 0 && (
+                                <div className="ml-6 space-y-3 mt-2">
+                                {task.activities.map((act: any, aIdx: number) => (
+                                    <div key={act.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 relative group/activity">
+                                        <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                <span className="font-bold text-slate-500 text-xs">Activity {index+1}.{tIdx+1}.{aIdx+1}</span>
+                                                <span className="text-slate-800 text-sm font-medium">{act.title}</span>
+                                                </div>
+                                                <CreateModuleButton parentId={act.id} parentType="ACTIVITY" className="h-6 text-[10px] py-0 opacity-0 group-hover/activity:opacity-100 transition-opacity" />
+                                        </div>
+                                        {/* Activity Modules */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                                {act.modules.map((m: any) => <ModuleRow key={m.id} module={m} projectId={projectId} />)}
+                                        </div>
+                                    </div>
+                                ))}
+                                </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </Card>
+    );
 }
 
 

@@ -4,6 +4,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { createModule, updateModuleMetadata } from "@/app/actions/modules";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { Modal } from "@/components/ui/Modal";
 import { useEffect, useState } from "react";
 import { Plus, Edit } from "lucide-react";
@@ -92,6 +93,14 @@ function ModuleForm({ parentId, parentType, module, onClose, isEdit = false }: {
                 defaultValue={module?.maxChars}
                 error={state?.error?.maxChars}
                 placeholder="e.g. 5000"
+            />
+            
+            <Textarea 
+                name="guidelines"
+                label="Guidelines (Funding Body Instructions)"
+                defaultValue={module?.guidelines}
+                error={state?.error?.guidelines}
+                placeholder="Enter instructions for successful completion..."
             />
 
             <div className="flex justify-end gap-2 pt-4">
