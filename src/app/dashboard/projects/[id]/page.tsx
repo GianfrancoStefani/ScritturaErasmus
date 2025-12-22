@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ArrowLeft, Plus, FileText, Layers, Calendar } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Layers, Calendar, Edit } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
@@ -9,26 +9,38 @@ import clsx from "clsx";
 import { DeleteButton } from "@/components/ui/DeleteButton";
 import { deleteProject } from "@/app/actions/deleteProject";
 import { deleteModule } from "@/app/actions/deleteModule";
+import { CreateModuleButton, EditModuleButton } from "@/components/modules/ModuleForm";
 
 async function getProject(id: string) {
+  const moduleInclude = {
+    components: {
+        include: { comments: true }
+    }
+  };
+
   return await prisma.project.findUnique({
     where: { id },
     include: {
       works: {
         orderBy: { startDate: 'asc' },
         include: {
-          modules: true,
+          modules: { include: moduleInclude },
           tasks: {
             include: {
-              modules: true,
+              modules: { include: moduleInclude },
               activities: {
-                include: { modules: true }
+                include: { 
+                    modules: { include: moduleInclude }
+                }
               }
             }
           }
         }
       },
-      modules: { orderBy: { order: 'asc' } },
+      modules: { 
+          orderBy: { order: 'asc' },
+          include: moduleInclude
+      },
       partners: true
     }
   });
@@ -40,12 +52,6 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const project = await getProject(params.id);
 
   if (!project) notFound();
-
-  // Gather all modules for the report (nested + direct)
-  const allModules = [
-    ...(project.modules || []),
-    ...(project.works?.flatMap(w => w.modules) || [])
-  ];
 
   return (
     <div className="space-y-8 pb-20">
@@ -75,11 +81,6 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                  <Link href={`/dashboard/projects/${project.id}/export`}>
                     <Button variant="secondary">Export PDF</Button>
                  </Link>
-                 {/* 
-                    Ideally 'Generate Report' would open a modal with the html returned by generateProjectReport action.
-                    For MVP, I'm omitting the modal implementation to focus on the requested features which are covered by 'Export' (Document) and 'Timeline'.
-                    The 'Email Report' requirement is satisfied by the server action existence for future Cron usage.
-                 */}
                  <DeleteButton 
                     id={project.id} 
                     onDelete={deleteProject} 
@@ -91,13 +92,20 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       </div>
 
       {/* Project Level Modules */}
-      {project.modules.length > 0 && (
-        <Section title="Project General Modules">
+      <Section title="Project Management Modules">
+          <div className="flex justify-end mb-2">
+              <CreateModuleButton parentId={project.id} parentType="PROJECT" />
+          </div>
+          {project.modules.length === 0 ? (
+               <div className="text-center py-4 bg-slate-50 rounded border border-dashed border-slate-300 text-sm text-slate-500">
+                   No project-level modules yet.
+               </div>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {project.modules.map(m => <ModuleCard key={m.id} module={m} projectId={project.id} />)}
             </div>
-        </Section>
-      )}
+          )}
+      </Section>
 
       {/* Work Packages */}
       <div className="space-y-6">
@@ -120,17 +128,22 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                                 {format(work.startDate, 'MM/yy')} - {format(work.endDate, 'MM/yy')}
                             </span>
                         </div>
-                        <Link href={`/dashboard/works/${work.id}`}>
-                            <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
-                                Manage Tasks
-                            </Button>
-                        </Link>
+                        <div className="flex gap-2">
+                            <CreateModuleButton parentId={work.id} parentType="WORK" className="text-xs h-8" />
+                            <Link href={`/dashboard/works/${work.id}`}>
+                                <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+                                    Manage Tasks
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
                     
                     {/* WP Modules */}
-                    {work.modules.length > 0 && (
+                    {(work.modules.length > 0 || true) && (
                         <div className="mb-4 space-y-2">
-                             <h4 className="text-xs font-bold text-slate-400 uppercase">WP Modules</h4>
+                             <div className="flex justify-between items-center bg-slate-50 p-1 px-2 rounded">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase">General Modules</h4>
+                             </div>
                              {work.modules.map(m => <ModuleRow key={m.id} module={m} projectId={project.id} />)}
                         </div>
                     )}
@@ -139,9 +152,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                     <div className="pl-4 border-l-2 border-slate-100 space-y-6 mt-4">
                         {work.tasks.map((task, tIdx) => (
                             <div key={task.id}>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="font-bold text-slate-700 text-sm">Task {idx+1}.{tIdx+1}:</span>
-                                    <span className="text-slate-600 text-sm">{task.title}</span>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-700 text-sm">Task {idx+1}.{tIdx+1}:</span>
+                                        <span className="text-slate-600 text-sm">{task.title}</span>
+                                    </div>
+                                    <CreateModuleButton parentId={task.id} parentType="TASK" className="h-6 text-[10px] py-0" />
                                 </div>
                                 
                                 {/* Task Modules */}
@@ -155,10 +171,13 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                                 {task.activities.length > 0 && (
                                      <div className="ml-6 space-y-3 mt-2">
                                         {task.activities.map((act, aIdx) => (
-                                            <div key={act.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                     <span className="font-bold text-slate-500 text-xs">Activity {idx+1}.{tIdx+1}.{aIdx+1}</span>
-                                                     <span className="text-slate-800 text-sm font-medium">{act.title}</span>
+                                            <div key={act.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 relative group/activity">
+                                                <div className="flex items-center justify-between mb-2">
+                                                     <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-slate-500 text-xs">Activity {idx+1}.{tIdx+1}.{aIdx+1}</span>
+                                                        <span className="text-slate-800 text-sm font-medium">{act.title}</span>
+                                                     </div>
+                                                     <CreateModuleButton parentId={act.id} parentType="ACTIVITY" className="h-6 text-[10px] py-0 opacity-0 group-hover/activity:opacity-100 transition-opacity" />
                                                 </div>
                                                 {/* Activity Modules */}
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
@@ -188,48 +207,105 @@ function Section({ title, children }: { title: string, children: React.ReactNode
     )
 }
 
-function ModuleCard({ module, projectId }: { module: any, projectId: string }) { // Using any for brevity vs defining types again locally
+
+function ModuleCard({ module, projectId }: { module: any, projectId: string }) {
+    const contributionsCount = module.components?.length || 0;
+    const commentsCount = module.components?.reduce((acc: number, c: any) => acc + (c.comments?.length || 0), 0) || 0;
+    
     return (
-        <Card className="hover:shadow-md transition-shadow cursor-pointer group">
-            <div className="flex justify-between items-start mb-2">
-                <FileText size={20} className="text-blue-500" />
-                <div className="flex items-center gap-2">
-                    <StatusBadge status={module.status} />
-                    <DeleteButton 
-                        id={module.id} 
-                        onDelete={deleteModule.bind(null, projectId)} 
-                        className="opacity-0 group-hover:opacity-100 text-red-500 -mr-2"
-                        confirmMessage="Delete this module?"
-                    />
-                </div>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer group relative flex flex-col h-full">
+             <div className="absolute top-2 right-2 flex gap-1 bg-white/80 backdrop-blur rounded p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <EditModuleButton module={module} />
+                <DeleteButton 
+                    id={module.id} 
+                    onDelete={deleteModule.bind(null, projectId)} 
+                    className="text-red-500"
+                    confirmMessage="Delete this module?"
+                />
             </div>
-            <h4 className="font-bold text-slate-800 line-clamp-1">{module.title}</h4>
-            <p className="text-xs text-slate-400 line-clamp-2 mt-1">{module.subtitle || "No subtitle"}</p>
+            <Link href={`/dashboard/projects/${projectId}/modules/${module.id}`} className="flex flex-col h-full"> 
+                <div className="flex justify-between items-start mb-2">
+                    <FileText size={20} className="text-blue-500" />
+                    <div className="flex items-center gap-2">
+                        <StatusBadge status={module.status} />
+                    </div>
+                </div>
+                <h4 className="font-bold text-slate-800 line-clamp-1 pr-6">{module.title}</h4>
+                <p className="text-xs text-slate-400 line-clamp-2 mt-1 mb-4 flex-1">{module.subtitle || "No subtitle"}</p>
+                
+                <div className="mt-auto space-y-3 pt-3 border-t border-slate-100">
+                    {/* Progress Bar */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] text-slate-500 font-medium">
+                            <span>Progress</span>
+                            <span>{module.completion}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-blue-500 rounded-full transition-all" 
+                                style={{ width: `${module.completion}%` }} 
+                            />
+                        </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                         <div className="flex items-center gap-1" title="Contributions">
+                            <Layers size={14} /> {contributionsCount}
+                         </div>
+                         <div className="flex items-center gap-1" title="Comments">
+                             <FileText size={14} /> {commentsCount}
+                         </div>
+                         {module.maxChars && (
+                             <div className="flex items-center gap-1 ml-auto font-mono text-[10px]">
+                                {module.maxChars} ch
+                             </div>
+                         )}
+                    </div>
+                </div>
+            </Link>
         </Card>
     )
 }
 
 function ModuleRow({ module, projectId }: { module: any, projectId: string }) {
+    const contributionsCount = module.components?.length || 0;
+    const commentsCount = module.components?.reduce((acc: number, c: any) => acc + (c.comments?.length || 0), 0) || 0;
+
     return (
         <div className="flex items-center justify-between p-2 lg:p-3 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 transition-colors group">
-            <div className="flex items-center gap-3">
-                <FileText size={16} className="text-slate-400 group-hover:text-indigo-500" />
-                <div>
-                   <p className="text-sm font-medium text-slate-800">{module.title}</p>
-                   {module.subtitle && <p className="text-xs text-slate-400">{module.subtitle}</p>}
-                </div>
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+                <FileText size={16} className="text-slate-400 group-hover:text-indigo-500 flex-shrink-0" />
+                <Link href={`/dashboard/projects/${projectId}/modules/${module.id}`} className="min-w-0 flex-1 hover:underline decoration-slate-300 underline-offset-2">
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-800 truncate">{module.title}</p>
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded">{module.completion}%</span>
+                    </div>
+                   {module.subtitle && <p className="text-xs text-slate-400 truncate">{module.subtitle}</p>}
+                </Link>
             </div>
+            
+            <div className="flex items-center gap-4 mr-4">
+                 <div className="flex items-center gap-3 text-xs text-slate-400">
+                     <span className="flex items-center gap-1" title="Contributions"><Layers size={14} /> {contributionsCount}</span>
+                     <span className="flex items-center gap-1" title="Comments"><FileText size={14} /> {commentsCount}</span>
+                 </div>
+            </div>
+
             <div className="flex items-center gap-2">
                 <StatusBadge status={module.status} />
-                <Link href={`/dashboard/projects/${projectId}/modules/${module.id}`}>
-                    <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100">Edit</Button>
-                </Link>
-                <DeleteButton 
-                    id={module.id} 
-                    onDelete={deleteModule.bind(null, projectId)} 
-                    className="opacity-0 group-hover:opacity-100 text-red-500"
-                    redirectAfter={undefined}
-                />
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <EditModuleButton module={module} />
+                    <Link href={`/dashboard/projects/${projectId}/modules/${module.id}`}>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs px-2">Open</Button>
+                    </Link>
+                    <DeleteButton 
+                        id={module.id} 
+                        onDelete={deleteModule.bind(null, projectId)} 
+                        className="text-red-500"
+                        redirectAfter={undefined}
+                    />
+                </div>
             </div>
         </div>
     )
@@ -243,7 +319,7 @@ function StatusBadge({ status }: { status: string }) {
         'AUTHORIZED': 'bg-blue-100 text-blue-700'
     };
     return (
-        <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded uppercase", colors[status] || colors['TO_DONE'])}>
+        <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex-shrink-0 whitespace-nowrap", colors[status] || colors['TO_DONE'])}>
             {status.replace('_', ' ')}
         </span>
     )

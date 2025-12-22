@@ -89,6 +89,7 @@ export default async function ModuleEditorPage({ params }: { params: { id: strin
                         <RichTextEditor 
                             moduleId={moduleData.id} 
                             initialContent={moduleData.officialText || ""} 
+                            maxChars={moduleData.maxChars || undefined}
                         />
                      </div>
                 </div>

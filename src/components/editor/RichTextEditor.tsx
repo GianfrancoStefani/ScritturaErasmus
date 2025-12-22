@@ -4,7 +4,8 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Typography from '@tiptap/extension-typography';
-import { useState, useCallback } from 'react';
+import CharacterCount from '@tiptap/extension-character-count';
+import { useState, useCallback, useEffect } from 'react';
 import { saveModuleContent } from '@/app/actions/editor';
 import { 
     Bold, Italic, List, ListOrdered, Heading1, Heading2, 
@@ -56,10 +57,12 @@ const ToolbarButton = ({
 
 export function RichTextEditor({ 
     moduleId, 
-    initialContent 
+    initialContent,
+    maxChars
 }: { 
     moduleId: string; 
     initialContent: string; 
+    maxChars?: number;
 }) {
     const [status, setStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
 
@@ -71,9 +74,6 @@ export function RichTextEditor({
         } else {
             console.error("Failed to auto-save");
         }
-        // If failed, we might want to keep it as 'unsaved' or retry. 
-        // For simple UX, we leave it as saving or switch back to saved if we assume eventual consistency or manual retry.
-        // Let's set to saved to clear the indicator, real error handling would require more UI.
     };
 
     const debouncedSave = useDebounceCallback(handleSave, 2000);
@@ -85,27 +85,47 @@ export function RichTextEditor({
             Placeholder.configure({
                 placeholder: 'Start writing your module content here...',
             }),
+            CharacterCount.configure({
+                limit: maxChars,
+            }),
         ],
         content: initialContent,
         editorProps: {
             attributes: {
-                class: 'editor-content-area', // We target prose via globals css rules on .ProseMirror
+                class: 'editor-content-area',
             },
         },
         onUpdate: ({ editor }) => {
             setStatus('unsaved');
             debouncedSave(editor.getHTML());
         },
+        immediatelyRender: false,
     });
+
+    // Sync content if it changes externally (e.g. after merge)
+    useEffect(() => {
+        if (editor && initialContent && editor.getHTML() !== initialContent) {
+           // check if difference is meaningful to avoid cursor jumps or overwrites while typing
+           // If we are "saving", we expect our content to be latest. 
+           // If we are "saved" and prop changes, it implies external update (like merge).
+           if (status === 'saved') {
+               editor.commands.setContent(initialContent);
+           }
+        }
+    }, [initialContent, editor, status]);
 
     if (!editor) {
         return null;
     }
 
+    const percentage = maxChars 
+        ? Math.round((100 / maxChars) * editor.storage.characterCount.characters()) 
+        : 0;
+
     return (
-        <div className="editor-container">
+        <div className="editor-container h-full flex flex-col">
             {/* Toolbar */}
-            <div className="editor-toolbar">
+            <div className="editor-toolbar flex-shrink-0">
                 <ToolbarButton
                     onClick={() => editor.chain().focus().toggleBold().run()}
                     disabled={!editor.can().chain().focus().toggleBold().run()}
@@ -159,7 +179,18 @@ export function RichTextEditor({
 
                 <div style={{ flex: 1 }} />
 
-                <div className="flex items-center gap-2 mr-2">
+                <div className="flex items-center gap-4 mr-2">
+                    {maxChars && (
+                        <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+                             <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                    className={clsx("h-full transition-all", percentage > 95 ? "bg-red-500" : "bg-indigo-500")} 
+                                    style={{ width: `${Math.min(percentage, 100)}%` }} 
+                                />
+                             </div>
+                             <span>{editor.storage.characterCount?.characters() || 0} / {maxChars}</span>
+                        </div>
+                    )}
                      <span style={{ 
                          fontSize: '0.75rem', 
                          fontWeight: 600, 
@@ -172,7 +203,7 @@ export function RichTextEditor({
             </div>
 
             {/* Editor Content */}
-            <div className="editor-content">
+            <div className="editor-content flex-1 overflow-y-auto">
                 <EditorContent editor={editor} />
             </div>
         </div>

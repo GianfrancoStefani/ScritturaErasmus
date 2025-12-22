@@ -30,6 +30,7 @@ export function ContributionEditor({ onSubmit, onCancel }: { onSubmit: (html: st
                 class: 'min-h-[100px] w-full p-3 focus:outline-none prose prose-sm max-w-none',
             },
         },
+        immediatelyRender: false,
     });
 
     if (!editor) return null;

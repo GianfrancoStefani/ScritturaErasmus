@@ -1,11 +1,26 @@
 "use client";
 
-import { useOptimistic, useState } from "react";
-import { createContribution } from "@/app/actions/module-editor";
+import { useOptimistic, useState, useEffect } from "react";
+import { createContribution, reorderContributions } from "@/app/actions/module-editor";
 import { ContributionEditor } from "./ContributionEditor";
 import { TextComponentCard } from "./TextComponentCard";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
 export function ContributionStream({ 
     moduleId, 
@@ -19,9 +34,22 @@ export function ContributionStream({
     isManager: boolean;
 }) {
     const [isWriting, setIsWriting] = useState(false);
-
-    // Filter? Order? Usually already ordered by backend.
     
+    // Local state for sorting
+    const [orderedComponents, setOrderedComponents] = useState(components);
+
+    // Sync if server props change (but respect local optimisitc updates until reload)
+    useEffect(() => {
+        setOrderedComponents(components);
+    }, [components]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     async function handleSubmit(content: string) {
         const formData = new FormData();
         formData.append("moduleId", moduleId);
@@ -31,6 +59,29 @@ export function ContributionStream({
         
         await createContribution(formData);
         setIsWriting(false);
+    }
+
+    async function handleDragEnd(event: DragEndEvent) {
+        const {active, over} = event;
+        
+        if (over && active.id !== over.id) {
+            setOrderedComponents((items) => {
+                const oldIndex = items.findIndex(i => i.id === active.id);
+                const newIndex = items.findIndex(i => i.id === over.id);
+                const newItems = arrayMove(items, oldIndex, newIndex);
+                
+                // Prepare update payload
+                const updatePayload = newItems.map((item, index) => ({
+                    id: item.id,
+                    order: index + 1 // 1-based ordering
+                }));
+
+                // Trigger server action in background without awaiting (optimistic UI)
+                reorderContributions(updatePayload);
+
+                return newItems;
+            });
+        }
     }
 
     return (
@@ -52,20 +103,31 @@ export function ContributionStream({
                     />
                 )}
                 
-                {components.length === 0 && !isWriting && (
+                {orderedComponents.length === 0 && !isWriting && (
                     <div className="text-center py-10 text-slate-400 italic">
                         No contributions yet. Start writing!
                     </div>
                 )}
 
-                {components.map(comp => (
-                    <TextComponentCard 
-                        key={comp.id} 
-                        component={comp} 
-                        currentUserId={currentUserId}
-                        isManager={isManager}
-                    />
-                ))}
+                <DndContext 
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext 
+                        items={orderedComponents.map(c => c.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {orderedComponents.map(comp => (
+                            <TextComponentCard 
+                                key={comp.id} 
+                                component={comp} 
+                                currentUserId={currentUserId}
+                                isManager={isManager}
+                            />
+                        ))}
+                    </SortableContext>
+                </DndContext>
             </div>
         </div>
     );
