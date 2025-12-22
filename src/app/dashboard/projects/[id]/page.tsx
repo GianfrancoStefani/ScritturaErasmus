@@ -41,6 +41,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
   if (!project) notFound();
 
+  // Gather all modules for the report (nested + direct)
+  const allModules = [
+    ...(project.modules || []),
+    ...(project.works?.flatMap(w => w.modules) || [])
+  ];
+
   return (
     <div className="space-y-8 pb-20">
       {/* Header */}
@@ -60,7 +66,9 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                 <h1 className="text-3xl font-bold text-slate-900">{project.title}</h1>
             </div>
             <div className="flex gap-2">
-                 <Button variant="secondary">Manage Partners</Button>
+                 <Link href={`/dashboard/projects/${project.id}/partners`}>
+                    <Button variant="secondary">Manage Partners</Button>
+                 </Link>
                  <Button>Generate Report</Button>
                  <DeleteButton 
                     id={project.id} 

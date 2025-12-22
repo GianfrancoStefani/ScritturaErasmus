@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useOptimistic, useTransition } from 'react';
 import {
   DndContext,
   closestCorners,
@@ -9,22 +9,19 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  defaultDropAnimationSideEffects,
   DragStartEvent,
   DragOverEvent,
   DragEndEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
-  SortableContext,
   sortableKeyboardCoordinates,
-  horizontalListSortingStrategy,
-  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
+import { updateModuleStatus } from '@/app/actions/kanban';
+import { useRouter } from 'next/navigation';
 
-// Mock Types
 export type ModuleStatus = 'TO_DONE' | 'UNDER_REVIEW' | 'DONE' | 'AUTHORIZED';
 
 export interface ModuleTask {
@@ -33,6 +30,7 @@ export interface ModuleTask {
   subtitle?: string;
   status: ModuleStatus;
   user: string; // assigned user
+  projectTitle?: string;
 }
 
 const defaultCols: { id: ModuleStatus; title: string }[] = [
@@ -42,19 +40,25 @@ const defaultCols: { id: ModuleStatus; title: string }[] = [
   { id: 'AUTHORIZED', title: 'Authorized' },
 ];
 
-const initialTasks: ModuleTask[] = [
-  { id: 'task-1', title: 'Needs Analysis', subtitle: 'Describe the background', status: 'TO_DONE', user: 'GS' },
-  { id: 'task-2', title: 'Target Group', subtitle: 'Define primary target', status: 'TO_DONE', user: 'JD' },
-  { id: 'task-3', title: 'Methodology', status: 'UNDER_REVIEW', user: 'GS' },
-  { id: 'task-4', title: 'Impact', status: 'DONE', user: 'AB' },
-];
+export function KanbanBoard({ initialModules }: { initialModules: ModuleTask[] }) {
+  // Use optimistic UI for instant feedback
+  const [optimisticModules, addOptimisticModule] = useOptimistic(
+    initialModules,
+    (state, updatedModule: { id: string; status: ModuleStatus }) => {
+        return state.map((m) => m.id === updatedModule.id ? { ...m, status: updatedModule.status } : m);
+    }
+  );
 
-export function KanbanBoard() {
-  const [tasks, setTasks] = useState<ModuleTask[]>(initialTasks);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+        activationConstraint: {
+            distance: 5, // Prevent accidental drags
+        },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -66,7 +70,7 @@ export function KanbanBoard() {
     if (columns.find((col) => col.id === id)) {
       return id;
     }
-    const task = tasks.find((t) => t.id === id);
+    const task = optimisticModules.find((t) => t.id === id);
     return task?.status;
   }
 
@@ -74,61 +78,34 @@ export function KanbanBoard() {
     setActiveId(event.active.id as string);
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over) return;
-
     const activeContainer = findContainer(active.id as string);
-    const overContainer = findContainer(over.id as string);
+    const overContainer = over ? findContainer(over.id as string) : null;
 
     if (
         !activeContainer ||
         !overContainer ||
         activeContainer === overContainer
     ) {
+        setActiveId(null);
         return;
     }
 
-    // Move task to new specific container status
-    setTasks((prev) => {
-        const activeItems = prev.filter((t) => t.status === activeContainer);
-        const overItems = prev.filter((t) => t.status === overContainer);
+    // It's a valid move to a different column
+    const newStatus = overContainer as ModuleStatus;
+    const moduleId = active.id as string;
 
-        // Find index in main list? No, we filter by status. 
-        // Simplification: We update the status of the dragged item to the overContainer 
-        // IF we are dragging over a Column directly, or dragging over a Card in a different column.
+    startTransition(async () => {
+        // Optimistic update
+        addOptimisticModule({ id: moduleId, status: newStatus });
         
-        // This logic handles "preview" during drag.
-        const activeIndex = prev.findIndex((t) => t.id === active.id);
-        const newStatus = overContainer as ModuleStatus;
-
-        if (prev[activeIndex].status !== newStatus) {
-            const newTasks = [...prev];
-            newTasks[activeIndex] = { ...newTasks[activeIndex], status: newStatus };
-            return newTasks;
-        }
-        return prev;
+        // Server Action
+        await updateModuleStatus(moduleId, newStatus);
+        
+        // Refresh to get consistent state
+        // router.refresh(); // Not strictly needed if revalidatePath works, but safe.
     });
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    const activeContainer = findContainer(active.id as string);
-    const overContainer = over ? findContainer(over.id as string) : null;
-
-    if (
-        activeContainer &&
-        overContainer &&
-        activeContainer === overContainer
-    ) {
-        // Reordering within same column
-        const activeIndex = tasks.findIndex((t) => t.id === active.id);
-        const overIndex = tasks.findIndex((t) => t.id === over.id);
-
-        if (activeIndex !== overIndex) {
-            setTasks((items) => arrayMove(items, activeIndex, overIndex));
-        }
-    }
 
     setActiveId(null);
   };
@@ -139,7 +116,6 @@ export function KanbanBoard() {
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
             <div className="flex gap-6">
@@ -148,7 +124,7 @@ export function KanbanBoard() {
                         key={col.id}
                         id={col.id}
                         title={col.title}
-                        tasks={tasks.filter((t) => t.status === col.id)}
+                        tasks={optimisticModules.filter((t) => t.status === col.id)}
                     />
                 ))}
             </div>
@@ -156,7 +132,7 @@ export function KanbanBoard() {
             <DragOverlay>
                 {activeId ? (
                    <div className="opacity-80 rotate-2 scale-105">
-                        <KanbanCard task={tasks.find((t) => t.id === activeId)!} />
+                        <KanbanCard task={optimisticModules.find((t) => t.id === activeId)!} />
                    </div>
                 ) : null}
             </DragOverlay>
