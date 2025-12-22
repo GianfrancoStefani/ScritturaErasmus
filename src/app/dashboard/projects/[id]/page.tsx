@@ -12,6 +12,7 @@ import { deleteModule } from "@/app/actions/deleteModule";
 import { CreateModuleButton, EditModuleButton } from "@/components/modules/ModuleForm";
 import { CreateSectionButton } from "@/components/projects/CreateSectionButton";
 import { SaveTemplateButton } from "@/components/projects/SaveTemplateButton";
+import { ProjectBoard } from "@/components/project/ProjectBoard";
 
 async function getProject(id: string) {
   const moduleInclude = {
@@ -119,66 +120,8 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         </div>
       </div>
 
-      {/* Sections */}
-      {project.sections?.map((section) => (
-          <CollapsibleSection key={section.id} title={section.title} defaultOpen={true}>
-              {/* Section Modules */}
-              {section.modules.length > 0 && (
-                  <div className="mb-6">
-                      <h4 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">Modules</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {section.modules.map(m => <ModuleCard key={m.id} module={m} projectId={project.id} />)}
-                      </div>
-                  </div>
-              )}
-
-              {/* Section Work Packages */}
-              {section.works.length > 0 && (
-                  <div className="space-y-6">
-                        <h4 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">Work Packages</h4>
-                        {section.works.map((work, idx) => (
-                             <WorkPackageCard key={work.id} work={work} index={idx} projectId={project.id} />
-                        ))}
-                  </div>
-              )}
-              
-              {section.modules.length === 0 && section.works.length === 0 && (
-                  <div className="text-center py-6 text-slate-400 italic bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                      Empty Section
-                  </div>
-              )}
-          </CollapsibleSection>
-      ))}
-
-      {/* Project Level Modules (Unassigned) */}
-      {(project.modules.length > 0) && (
-        <Section title="Project Management Modules">
-            <div className="flex justify-end mb-2">
-                <CreateModuleButton parentId={project.id} parentType="PROJECT" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {project.modules.map(m => <ModuleCard key={m.id} module={m} projectId={project.id} />)}
-            </div>
-        </Section>
-      )}
-
-      {/* Work Packages */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Layers size={20} className="text-indigo-600" /> Work Packages
-            </h2>
-            <Button size="sm" variant="ghost"><Plus size={16} className="mr-1" /> Add Work</Button>
-        </div>
-
-        {project.works.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 italic">No unassigned work packages.</div>
-        ) : (
-            project.works.map((work, idx) => (
-                <WorkPackageCard key={work.id} work={work} index={idx} projectId={project.id} />
-            ))
-        )}
-      </div>
+      {/* Project Board (Client Component handling DND and Layout) */}
+      <ProjectBoard project={project} />
     </div>
   );
 }

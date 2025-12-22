@@ -1,18 +1,20 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
-const prisma = new PrismaClient();
+const prismaClient = new PrismaClient();
 
 async function main() {
   const hashedPassword = await bcrypt.hash('password123', 10);
   
+  // Create Leader User
+  
   // Create a dummy partner if not exists (User needs a partner relation)
-  const project = await prisma.project.findFirst();
+  const project = await prismaClient.project.findFirst();
   let projectId = project?.id;
   
   if (!projectId) {
       // Emergency project creation if none exists
-      const newProject = await prisma.project.create({
+      const newProject = await prismaClient.project.create({
           data: {
               title: "Seed Project",
               titleEn: "Seed Project",
@@ -27,9 +29,9 @@ async function main() {
       projectId = newProject.id;
   }
 
-  let partner = await prisma.partner.findFirst({ where: { projectId } });
+  let partner = await prismaClient.partner.findFirst({ where: { projectId } });
   if (!partner) {
-      partner = await prisma.partner.create({
+      partner = await prismaClient.partner.create({
           data: {
               projectId: projectId,
               name: "Seed Partner",
@@ -43,12 +45,12 @@ async function main() {
   }
 
     // Check if user exists first to avoid unique constraint errors if re-running
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prismaClient.user.findUnique({
         where: { email: 'admin@scrituraerasmus.com' }
     });
 
     if (!existingUser) {
-        const user = await prisma.user.create({
+        const user = await prismaClient.user.create({
             data: {
             email: 'admin@scrituraerasmus.com',
             username: 'admin',
@@ -61,16 +63,15 @@ async function main() {
         });
         console.log("User created:", user);
     } else {
-        console.log("User already exists, skipping creation.");
+        console.log("User already exists:", existingUser);
     }
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
+  .catch((e) => {
     console.error(e);
-    await prisma.$disconnect();
     process.exit(1);
+  })
+  .finally(async () => {
+    await prismaClient.$disconnect();
   });

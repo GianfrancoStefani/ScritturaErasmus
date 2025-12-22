@@ -35,7 +35,7 @@ export default async function TemplatesPage() {
                             {template.title}
                         </h3>
                         <p className="text-sm text-slate-500 mb-4 line-clamp-2">
-                             {template.description || "No description provided."}
+                             {template.titleEn || template.title}
                         </p>
 
                         <div className="flex items-center gap-4 text-xs text-slate-400 mb-6">
@@ -43,7 +43,7 @@ export default async function TemplatesPage() {
                             <span>{template._count.modules} Modules</span>
                         </div>
 
-                        <Link href={`/dashboard/projects/create?templateId=${template.id}`} className="block w-full">
+                        <Link href={`/dashboard/projects/new?templateId=${template.id}`} className="block w-full">
                             <Button className="w-full" variant="outline">
                                 Use Template
                             </Button>

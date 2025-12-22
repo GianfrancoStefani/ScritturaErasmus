@@ -65,7 +65,7 @@ export function GanttChart({
     };
 
     // Recursive render row
-    const renderRow = (item: TimelineItem, depth: number = 0) => {
+    const renderRow = (item: TimelineItem, depth: number = 0): React.ReactNode => {
         const { left, width } = getPosition(item.startDate, item.endDate);
         
         const colorClass = 

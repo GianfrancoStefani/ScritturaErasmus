@@ -29,4 +29,5 @@ export async function inspectExcel() {
       logs.push(`Found ${wp1Modules.length} modules in WP1`);
       logs.push(JSON.stringify(wp1Modules.slice(0, 3), null, 2));
   }
+  return { logs: logs.join("\n") };
 }

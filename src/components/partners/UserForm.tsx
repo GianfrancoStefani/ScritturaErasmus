@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { createUser, updateUser } from "@/app/actions/partners";
+import { createUser, updateUser, type PartnerActionState } from "@/app/actions/partners";
 import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 import { Plus, X, Edit2 } from "lucide-react";
@@ -29,8 +29,8 @@ function SubmitButton({ isEditing }: { isEditing: boolean }) {
 export function UserForm({ partnerId, initialData, onClose }: { partnerId: string; initialData?: UserData; onClose: () => void }) {
     const isEditing = !!initialData;
 
-    const [state, formAction] = useFormState(async (prevState: any, formData: FormData) => {
-         let result;
+    const [state, formAction] = useFormState<PartnerActionState, FormData>(async (prevState, formData) => {
+         let result: PartnerActionState;
          if (isEditing && initialData?.id) {
              result = await updateUser(initialData.id, partnerId, formData);
          } else {
@@ -39,10 +39,10 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
          
          if (result?.success) {
              onClose();
-             return { message: "Success" };
+             return { message: "Success", success: true, error: null };
          }
          return result;
-    }, null);
+    }, { success: false, error: null });
 
     return (
         <form action={formAction} className="space-y-4">
@@ -62,10 +62,12 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
                 <div className="space-y-1 col-span-1">
                     <label className="text-sm font-medium">Name</label>
                     <input name="name" className="w-full border rounded p-2" required defaultValue={initialData?.name} />
+                    {state?.fieldErrors?.name && <p className="text-red-500 text-xs">{state.fieldErrors.name[0]}</p>}
                 </div>
                 <div className="space-y-1 col-span-1">
                     <label className="text-sm font-medium">Surname</label>
                     <input name="surname" className="w-full border rounded p-2" required defaultValue={initialData?.surname} />
+                    {state?.fieldErrors?.surname && <p className="text-red-500 text-xs">{state.fieldErrors.surname[0]}</p>}
                 </div>
             </div>
 
@@ -73,6 +75,7 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
                  <div className="space-y-1">
                     <label className="text-sm font-medium">Email</label>
                     <input name="email" type="email" className="w-full border rounded p-2" required defaultValue={initialData?.email} />
+                    {state?.fieldErrors?.email && <p className="text-red-500 text-xs">{state.fieldErrors.email[0]}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Role</label>
@@ -101,6 +104,7 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Username</label>
                     <input name="username" className="w-full border rounded p-2" required defaultValue={initialData?.username} />
+                    {state?.fieldErrors?.username && <p className="text-red-500 text-xs">{state.fieldErrors.username[0]}</p>}
                 </div>
                  <div className="space-y-1">
                     <label className="text-sm font-medium">Photo URL</label>
@@ -111,11 +115,11 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
              <div className="space-y-1">
                 <label className="text-sm font-medium">Password {isEditing && "(Leave blank to keep current)"}</label>
                 <input name="password" type="password" className="w-full border rounded p-2" required={!isEditing} minLength={6} />
+                {state?.fieldErrors?.password && <p className="text-red-500 text-xs">{state.fieldErrors.password[0]}</p>}
             </div>
 
             <div className="text-red-500 text-sm">
-                {state?.error && (typeof state.error === 'string' ? state.error : "Validation error")}
-                 {state?.error && typeof state.error === 'object' && Object.values(state.error).flat().map((e: any) => <div key={e}>{e}</div>)}
+                {state?.error}
             </div>
 
             <div className="flex justify-end pt-2">

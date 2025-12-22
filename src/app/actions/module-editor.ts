@@ -176,3 +176,16 @@ export async function reorderContributions(items: { id: string, order: number }[
         return { error: "Failed to reorder" };
     }
 }
+
+export async function updateModuleStatus(moduleId: string, status: string) {
+    try {
+        await prisma.module.update({
+            where: { id: moduleId },
+            data: { status }
+        });
+        revalidatePath("/dashboard/projects/[id]"); 
+        return { success: true };
+    } catch (error) {
+        return { error: "Failed to update status" };
+    }
+}

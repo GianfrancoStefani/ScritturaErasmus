@@ -9,7 +9,10 @@ export default function ImportDebugPage() {
             
             <div className="mt-8 border-t pt-8">
                 <h2 className="text-xl font-bold mb-4">Run Full Import</h2>
-                <form action={importProjectFromExcel}>
+                <form action={async () => {
+                    "use server";
+                    await importProjectFromExcel();
+                }}>
                     <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                         Import Project Now
                     </button>

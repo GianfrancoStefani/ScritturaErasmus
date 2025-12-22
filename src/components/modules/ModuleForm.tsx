@@ -1,17 +1,58 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { createModule, updateModuleMetadata } from "@/app/actions/modules";
+import { createModule, updateModuleMetadata, type ModuleActionState } from "@/app/actions/modules";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Modal } from "@/components/ui/Modal";
 import { useEffect, useState } from "react";
-import { Plus, Edit } from "lucide-react";
+import { Plus, Edit, List, Type } from "lucide-react";
 
-const initialState = { error: null, success: false };
+function TypeDependentFields({ initialType, initialOptions, fieldErrors }: { initialType: string, initialOptions?: string, fieldErrors?: any }) {
+    const [type, setType] = useState(initialType);
+    
+    // Manage simple CSV input for options for now
+    const [optionsStr, setOptionsStr] = useState("");
 
-export function CreateModuleButton({ parentId, parentType, className }: { parentId: string, parentType: 'PROJECT' | 'WORK' | 'TASK' | 'ACTIVITY', className?: string }) {
+    // Initialize optionsStr from JSON if possible
+    useEffect(() => {
+        if (initialOptions) {
+            try {
+                const parsed = JSON.parse(initialOptions);
+                if (Array.isArray(parsed)) {
+                    setOptionsStr(parsed.map(o => o.value || o).join(", "));
+                }
+            } catch (e) {
+                setOptionsStr(initialOptions);
+            }
+        }
+    }, [initialOptions]);
+
+    return (
+        <>
+             {/* Hidden input to sync state with form submission if we wanted controlled inputs, 
+                 but we are using native selects mostly. 
+                 Actually, the select above is uncontrolled. We need to sync.
+                 Let's intercept the select above? Or simpler: Just render the toggle here.
+             */}
+             <div className="hidden">
+                 {/* Re-render select here controlled? No, let's keep it simple. */}
+             </div>
+
+             {/* We need to hook into the parent select. 
+                 Refactoring parent slightly to be controlled would be better.
+                 But let's just stick a script or use a controlled component in parent.
+             */}
+        </>
+    )
+}
+// Wait, better to inline the logic in ModuleForm
+
+
+const initialState: ModuleActionState = { error: null, fieldErrors: null, success: false };
+
+export function CreateModuleButton({ parentId, parentType, className }: { parentId: string, parentType: 'PROJECT' | 'WORK' | 'TASK' | 'ACTIVITY' | 'SECTION', className?: string }) {
     const [isOpen, setIsOpen] = useState(false);
     
     return (
@@ -50,6 +91,10 @@ function ModuleForm({ parentId, parentType, module, onClose, isEdit = false }: {
 }) {
     const action = isEdit ? updateModuleMetadata : createModule;
     const [state, formAction] = useFormState(action, initialState);
+    
+    // Controlled state for Type
+    const [type, setType] = useState(module?.type || "TEXT");
+    const [optionsJson, setOptionsJson] = useState(module?.options || "[]");
 
     useEffect(() => {
         if (state?.success) {
@@ -57,9 +102,28 @@ function ModuleForm({ parentId, parentType, module, onClose, isEdit = false }: {
         }
     }, [state, onClose]);
 
+    // Handle Options CSV -> JSON
+    const handleOptionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const values = e.target.value.split(',').map(v => v.trim()).filter(v => v !== "");
+        const optionsObj = values.map(v => ({ label: v, value: v }));
+        setOptionsJson(JSON.stringify(optionsObj));
+    };
+
+    const initialOptionsCsv = module?.options ? (() => {
+        try {
+            const parsed = JSON.parse(module.options);
+            if (Array.isArray(parsed)) {
+                return parsed.map((o: any) => o.value || o).join(", ");
+            }
+            return "";
+        } catch {
+            return "";
+        }
+    })() : "";
+
     return (
         <form action={formAction} className="space-y-4">
-            {state?.error && typeof state.error === 'string' && (
+            {state?.error && (
                 <div className="text-red-500 text-sm bg-red-50 p-2 rounded">{state.error}</div>
             )}
 
@@ -76,32 +140,65 @@ function ModuleForm({ parentId, parentType, module, onClose, isEdit = false }: {
                 label="Module Title" 
                 required 
                 defaultValue={module?.title}
-                error={state?.error?.title}
+                error={state?.fieldErrors?.title?.[0]}
             />
 
             <Input 
                 name="subtitle" 
                 label="Subtitle" 
                 defaultValue={module?.subtitle}
-                error={state?.error?.subtitle}
+                error={state?.fieldErrors?.subtitle?.[0]}
             />
 
-            <Input 
-                name="maxChars" 
-                label="Max Characters (Optional)" 
-                type="number"
-                defaultValue={module?.maxChars}
-                error={state?.error?.maxChars}
-                placeholder="e.g. 5000"
-            />
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <label className="text-sm font-medium">Module Type</label>
+                    <select 
+                        name="type" 
+                        className="w-full border rounded p-2" 
+                        value={type}
+                        onChange={(e) => setType(e.target.value)}
+                    >
+                        <option value="TEXT">Regular Text</option>
+                        <option value="POPUP">Selection Popup</option>
+                    </select>
+                </div>
+                 <Input 
+                    name="maxChars" 
+                    label="Max Characters (Optional)" 
+                    type="number"
+                    defaultValue={module?.maxChars}
+                    error={state?.fieldErrors?.maxChars?.[0]}
+                    placeholder="e.g. 5000"
+                />
+            </div>
+
+            {type === 'POPUP' && (
+                <div className="space-y-1 bg-indigo-50 p-3 rounded border border-indigo-100">
+                    <label className="text-sm font-medium text-indigo-900">Popup Options (Comma separated)</label>
+                    <textarea 
+                        className="w-full border rounded p-2 text-sm"
+                        defaultValue={initialOptionsCsv}
+                        onChange={handleOptionsChange}
+                        placeholder="Option A, Option B, Option C..."
+                        rows={3}
+                    />
+                    <input type="hidden" name="options" value={optionsJson} />
+                    <p className="text-xs text-indigo-600">Enter values separated by commas. Users will be able to select from these values.</p>
+                </div>
+            )}
             
-            <Textarea 
-                name="guidelines"
-                label="Guidelines (Funding Body Instructions)"
-                defaultValue={module?.guidelines}
-                error={state?.error?.guidelines}
-                placeholder="Enter instructions for successful completion..."
-            />
+
+            <div className="space-y-1">
+                <label className="text-sm font-medium">Guidelines (Funding body Instructions)</label>
+                <textarea 
+                    name="guidelines"
+                    className="w-full border rounded p-2 h-24 text-sm"
+                    defaultValue={module?.guidelines}
+                    placeholder="Enter instructions for successful completion..."
+                />
+                 {state?.fieldErrors?.guidelines?.[0] && <div className="text-red-500 text-xs">{state.fieldErrors.guidelines[0]}</div>}
+            </div>
 
             <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>

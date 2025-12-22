@@ -13,6 +13,10 @@ export default async function SettingsPage() {
       redirect("/login");
   }
 
+  if (!session?.user?.id) {
+    redirect('/auth/signin');
+  }
+
   const user = await prisma.user.findUnique({
       where: { id: session.user.id }
   });

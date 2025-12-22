@@ -193,6 +193,10 @@ model Module {
   officialText String?
   maxChars    Int?
   
+  type        String   @default("TEXT") // TEXT, POPUP
+  options     String?  // JSON string for Popup options
+  maxSelections Int?   // limit for Popup
+  
   status      String   @default("TO_DONE") // TO_DONE, UNDER_REVIEW, DONE, AUTHORIZED
   completion  Int      @default(0)
   guidelines  String?  // Funding body instructions

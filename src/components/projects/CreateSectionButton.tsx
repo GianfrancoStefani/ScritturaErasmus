@@ -6,7 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { createSection } from "@/app/actions/sections";
 import { Plus } from "lucide-react";
-import { toast } from "sonner"; // Assuming sonner or generic alert
+
 
 export function CreateSectionButton({ projectId }: { projectId: string }) {
     const [open, setOpen] = useState(false);

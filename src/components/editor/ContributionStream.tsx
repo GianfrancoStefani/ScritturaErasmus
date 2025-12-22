@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { createContribution, reorderContributions } from "@/app/actions/module-editor";
 import { ContributionEditor } from "./ContributionEditor";
 import { TextComponentCard } from "./TextComponentCard";
@@ -34,6 +34,7 @@ export function ContributionStream({
     isManager: boolean;
 }) {
     const [isWriting, setIsWriting] = useState(false);
+    const [isPending, startTransition] = useTransition();
     
     // Local state for sorting
     const [orderedComponents, setOrderedComponents] = useState(components);
@@ -57,8 +58,10 @@ export function ContributionStream({
         formData.append("type", "USER_TEXT"); // Default for now, could have selector
         formData.append("content", content);
         
-        await createContribution(formData);
-        setIsWriting(false);
+        startTransition(async () => {
+             await createContribution(formData);
+             setIsWriting(false);
+        });
     }
 
     async function handleDragEnd(event: DragEndEvent) {

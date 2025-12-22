@@ -10,10 +10,20 @@ const ModuleSchema = z.object({
   maxChars: z.coerce.number().optional(), // Coerce form data string to number
   guidelines: z.string().optional(),
   parentId: z.string(), // ID of Project, Work, Task, or Activity
-  parentType: z.enum(['PROJECT', 'WORK', 'TASK', 'ACTIVITY']),
+  parentType: z.enum(['PROJECT', 'WORK', 'TASK', 'ACTIVITY', 'SECTION']),
+  type: z.enum(['TEXT', 'POPUP']).default('TEXT'),
+  options: z.string().optional(), // JSON string for popup options
 });
 
-export async function createModule(prevState: any, formData: FormData) {
+export type ModuleActionState = {
+  success?: boolean;
+  error?: string | null;
+  fieldErrors?: Record<string, string[]> | null;
+}; 
+
+// ...
+
+export async function createModule(prevState: any, formData: FormData): Promise<ModuleActionState> {
     const rawData = {
         title: formData.get("title"),
         subtitle: formData.get("subtitle") || undefined,
@@ -21,12 +31,14 @@ export async function createModule(prevState: any, formData: FormData) {
         guidelines: formData.get("guidelines") || undefined,
         parentId: formData.get("parentId"),
         parentType: formData.get("parentType"),
+        type: formData.get("type") || 'TEXT',
+        options: formData.get("options") || undefined,
     };
 
     const validated = ModuleSchema.safeParse(rawData);
 
     if (!validated.success) {
-        return { error: validated.error.flatten().fieldErrors };
+        return { fieldErrors: validated.error.flatten().fieldErrors };
     }
 
     const { title, subtitle, maxChars, guidelines, parentId, parentType } = validated.data;
@@ -38,6 +50,7 @@ export async function createModule(prevState: any, formData: FormData) {
         else if (parentType === 'WORK') connectData.workId = parentId;
         else if (parentType === 'TASK') connectData.taskId = parentId;
         else if (parentType === 'ACTIVITY') connectData.activityId = parentId;
+        else if (parentType === 'SECTION') connectData.sectionId = parentId;
 
         // Get max order in this context
         const whereClause: any = {};
@@ -45,6 +58,7 @@ export async function createModule(prevState: any, formData: FormData) {
         else if (parentType === 'WORK') whereClause.workId = parentId;
         else if (parentType === 'TASK') whereClause.taskId = parentId;
         else if (parentType === 'ACTIVITY') whereClause.activityId = parentId;
+        else if (parentType === 'SECTION') whereClause.sectionId = parentId;
 
         const lastModule = await prisma.module.findFirst({
             where: whereClause,
@@ -58,6 +72,8 @@ export async function createModule(prevState: any, formData: FormData) {
                 subtitle,
                 maxChars: maxChars ? Number(maxChars) : null,
                 guidelines,
+                type: validated.data.type,
+                options: validated.data.options,
                 order: (lastModule?.order || 0) + 1,
                 ...connectData
             }
@@ -85,7 +101,7 @@ const UpdateModuleSchema = z.object({
     guidelines: z.string().optional(),
 });
 
-export async function updateModuleMetadata(prevState: any, formData: FormData) {
+export async function updateModuleMetadata(prevState: any, formData: FormData): Promise<ModuleActionState> {
     const rawData = {
         id: formData.get("id"),
         title: formData.get("title"),
@@ -95,7 +111,7 @@ export async function updateModuleMetadata(prevState: any, formData: FormData) {
     };
 
     const validated = UpdateModuleSchema.safeParse(rawData);
-    if (!validated.success) return { error: validated.error.flatten().fieldErrors };
+    if (!validated.success) return { fieldErrors: validated.error.flatten().fieldErrors };
 
     try {
         await prisma.module.update({

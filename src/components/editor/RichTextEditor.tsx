@@ -89,7 +89,9 @@ export function RichTextEditor({
                 limit: maxChars,
             }),
         ],
-        content: initialContent,
+        content: maxChars && initialContent.length > maxChars 
+            ? initialContent.substring(0, maxChars) 
+            : initialContent,
         editorProps: {
             attributes: {
                 class: 'editor-content-area',

@@ -70,7 +70,7 @@ export async function updateProfile(userId: string, formData: FormData) {
 export async function changePassword(userId: string, formData: FormData) {
     const session = await auth();
 
-    if (!session || session.user.id !== userId) {
+    if (!session || !session.user || session.user.id !== userId) {
         return { error: "Unauthorized" };
     }
 

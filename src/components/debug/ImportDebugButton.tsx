@@ -9,7 +9,7 @@ export function ImportDebugButton() {
 
     const handleInspect = async () => {
         const res = await inspectExcel();
-        setResult(res.logs || res.error || "No logs");
+        setResult(res.logs || "No logs");
     };
 
     return (

@@ -1,1 +1,5 @@
-[2025-12-22T16:51:43.785Z] SUCCESS: Imported project "Imported Erasmus Project" with ID cmjhe8ap1003jad6dsw7ujlv8
+[2025-12-22T21:25:23.136Z] ERROR: Failed to import project: 
+Invalid `prisma.module.create()` invocation:
+
+
+Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5070 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.

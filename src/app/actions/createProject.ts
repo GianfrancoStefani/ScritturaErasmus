@@ -53,7 +53,7 @@ export async function createProject(formData: FormData) {
                                             include: {
                                                 modules: { orderBy: { order: 'asc' } },
                                                 activities: {
-                                                    orderBy: { startDate: 'asc' },
+                                                    orderBy: { estimatedStartDate: 'asc' },
                                                     include: {
                                                         modules: { orderBy: { order: 'asc' } }
                                                     }
@@ -74,7 +74,7 @@ export async function createProject(formData: FormData) {
                                     include: {
                                         modules: { orderBy: { order: 'asc' } },
                                         activities: {
-                                            orderBy: { startDate: 'asc' },
+                                            orderBy: { estimatedStartDate: 'asc' },
                                             include: {
                                                 modules: { orderBy: { order: 'asc' } }
                                             }
@@ -160,7 +160,8 @@ export async function createProject(formData: FormData) {
                                             taskId: newTask.id,
                                             title: act.title,
                                             estimatedStartDate: startDate,
-                                            estimatedEndDate: endDate
+                                            estimatedEndDate: endDate,
+                                            allocatedAmount: 0
                                         }
                                     });
                                     await copyModules(act.modules, newAct.id, 'ACTIVITY');
@@ -201,7 +202,8 @@ export async function createProject(formData: FormData) {
                                             taskId: newTask.id,
                                             title: act.title,
                                             estimatedStartDate: startDate,
-                                            estimatedEndDate: endDate
+                                            estimatedEndDate: endDate,
+                                            allocatedAmount: 0
                                         }
                                     });
                                     await copyModules(act.modules, newAct.id, 'ACTIVITY');

@@ -29,7 +29,10 @@ export default function NewProjectPage({ searchParams }: { searchParams: { templ
       </div>
 
       <Card>
-        <form action={createProject} className="space-y-6">
+        <form action={async (formData) => {
+            await createProject(formData);
+            return;
+        }} className="space-y-6">
             {templateId && <input type="hidden" name="templateId" value={templateId} />}
             <div className="space-y-4">
                 <Input name="title" label="Project Title" placeholder="e.g. Digital Education for All" required />

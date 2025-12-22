@@ -230,7 +230,8 @@ export function AssignmentForm({
             </div>
 
             <div className="text-red-500 text-sm">
-                {state?.error && (typeof state.error === 'string' ? state.error : "Validation error")}
+                {(state as any)?.error && (typeof (state as any).error === 'string' ? (state as any).error : "Validation error")}
+                {(state as any)?.message && (state as any).message}
             </div>
 
             <div className="pt-2">

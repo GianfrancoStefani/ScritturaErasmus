@@ -33,7 +33,14 @@ const UserSchema = z.object({
   photo: z.string().optional(),
 });
 
-export async function createPartner(formData: FormData) {
+export type PartnerActionState = {
+  success?: boolean;
+  error?: string | null;
+  fieldErrors?: Record<string, string[]> | null;
+  message?: string | null;
+};
+
+export async function createPartner(formData: FormData): Promise<PartnerActionState> {
   const rawData = {
     projectId: formData.get("projectId"),
     name: formData.get("name"),
@@ -51,7 +58,7 @@ export async function createPartner(formData: FormData) {
   const validation = PartnerSchema.safeParse(rawData);
 
   if (!validation.success) {
-    return { error: validation.error.flatten().fieldErrors };
+    return { fieldErrors: validation.error.flatten().fieldErrors };
   }
 
   const { projectId, ...data } = validation.data;
@@ -71,7 +78,7 @@ export async function createPartner(formData: FormData) {
   }
 }
 
-export async function updatePartner(partnerId: string, projectId: string, formData: FormData) {
+export async function updatePartner(partnerId: string, projectId: string, formData: FormData): Promise<PartnerActionState> {
     const rawData = {
         projectId, // Keep for validation
         name: formData.get("name"),
@@ -89,7 +96,7 @@ export async function updatePartner(partnerId: string, projectId: string, formDa
     const validation = PartnerSchema.safeParse(rawData);
 
     if (!validation.success) {
-        return { error: validation.error.flatten().fieldErrors };
+        return { fieldErrors: validation.error.flatten().fieldErrors };
     }
 
     const { projectId: _, ...data } = validation.data;
@@ -106,7 +113,7 @@ export async function updatePartner(partnerId: string, projectId: string, formDa
     }
 }
 
-export async function deletePartner(id: string, projectId: string) {
+export async function deletePartner(id: string, projectId: string): Promise<PartnerActionState> {
   try {
     await prisma.partner.delete({
        where: { id } 
@@ -118,7 +125,7 @@ export async function deletePartner(id: string, projectId: string) {
   }
 }
 
-export async function createUser(formData: FormData) {
+export async function createUser(formData: FormData): Promise<PartnerActionState> {
     const rawData = {
         partnerId: formData.get("partnerId"),
         name: formData.get("name"),
@@ -137,11 +144,11 @@ export async function createUser(formData: FormData) {
 
     // Initial creation requires password
     if (validation.success && !validation.data.password) {
-        return { error: { password: ["Password is required"] } };
+        return { fieldErrors: { password: ["Password is required"] } };
     }
 
     if (!validation.success) {
-        return { error: validation.error.flatten().fieldErrors };
+        return { fieldErrors: validation.error.flatten().fieldErrors };
     }
 
     const { partnerId, password, ...userData } = validation.data;
@@ -171,7 +178,7 @@ export async function createUser(formData: FormData) {
     }
 }
 
-export async function updateUser(userId: string, partnerId: string, formData: FormData) {
+export async function updateUser(userId: string, partnerId: string, formData: FormData): Promise<PartnerActionState> {
     const rawData = {
         partnerId,
         name: formData.get("name"),
@@ -194,7 +201,7 @@ export async function updateUser(userId: string, partnerId: string, formData: Fo
     const partialValidation = UserSchema.omit({ password: true }).safeParse(otherData);
 
     if (!partialValidation.success) {
-        return { error: partialValidation.error.flatten().fieldErrors };
+        return { fieldErrors: partialValidation.error.flatten().fieldErrors };
     }
     
     let updateData: any = { ...partialValidation.data };
@@ -204,7 +211,7 @@ export async function updateUser(userId: string, partnerId: string, formData: Fo
     } 
     // If password is provided but invalid
     else if (password && password.toString().length < 6) {
-         return { error: { password: ["Password must be at least 6 characters"] } };
+         return { fieldErrors: { password: ["Password must be at least 6 characters"] } };
     }
 
     const partner = await prisma.partner.findUnique({ where: { id: partnerId } });
@@ -224,7 +231,7 @@ export async function updateUser(userId: string, partnerId: string, formData: Fo
     }
 }
 
-export async function deleteUser(userId: string, projectId: string) {
+export async function deleteUser(userId: string, projectId: string): Promise<PartnerActionState> {
     try {
         await prisma.user.delete({ where: { id: userId } });
         revalidatePath(`/dashboard/projects/${projectId}/partners`);

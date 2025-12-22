@@ -9,20 +9,8 @@
 // Let's do Server Page -> Client Editor.
 
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
-import { updateModuleContent } from "@/app/actions/updateModule";
-import { useState } from "react";
-import { useRouter } from "next/navigation"; // Correct import for App Router
 
 export default function ModuleEditorWrapper({ module }: { module: any }) {
-    const router = useRouter();
-    const [saving, setSaving] = useState(false);
-
-    const handleSave = async (content: string) => {
-        setSaving(true);
-        await updateModuleContent(module.id, content);
-        setSaving(false);
-        router.refresh();
-    };
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -35,7 +23,7 @@ export default function ModuleEditorWrapper({ module }: { module: any }) {
                 </div>
             </div>
             
-            <RichTextEditor initialContent={module.officialText || ""} onSave={handleSave} />
+            <RichTextEditor moduleId={module.id} initialContent={module.officialText || ""} />
         </div>
     );
 }

@@ -102,3 +102,106 @@ export async function updateWork(workId: string, projectId: string, formData: Fo
     return { error: "Failed to update work package" };
   }
 }
+
+export async function cloneWork(workId: string, projectId: string) {
+  try {
+    const originalWork = await prisma.work.findUnique({
+      where: { id: workId },
+      include: {
+        modules: true,
+        tasks: {
+          include: {
+            modules: true,
+            activities: {
+              include: {
+                modules: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!originalWork) {
+      return { error: "Work package not found" };
+    }
+
+    await prisma.work.create({
+      data: {
+        projectId: projectId,
+        sectionId: originalWork.sectionId,
+        title: `${originalWork.title} (Copy)`,
+        budget: originalWork.budget,
+        startDate: originalWork.startDate,
+        endDate: originalWork.endDate,
+        description: originalWork.description,
+        modules: {
+          create: originalWork.modules.map((m) => ({
+            title: m.title,
+            subtitle: m.subtitle,
+            officialText: m.officialText,
+            status: "TO_DONE",
+            order: m.order,
+            type: m.type,
+            options: m.options,
+            maxChars: m.maxChars,
+            maxSelections: m.maxSelections,
+            guidelines: m.guidelines
+          })),
+        },
+        tasks: {
+          create: originalWork.tasks.map((t) => ({
+            title: t.title,
+            budget: t.budget,
+            startDate: t.startDate,
+            endDate: t.endDate,
+            modules: {
+              create: t.modules.map((tm) => ({
+                 title: tm.title,
+                 subtitle: tm.subtitle,
+                 officialText: tm.officialText,
+                 status: "TO_DONE",
+                 order: tm.order,
+                 type: tm.type,
+                 options: tm.options,
+                 maxChars: tm.maxChars,
+                 maxSelections: tm.maxSelections,
+                 guidelines: tm.guidelines
+              })),
+            },
+            activities: {
+              create: t.activities.map((a) => ({
+                title: a.title,
+                venue: a.venue,
+                estimatedStartDate: a.estimatedStartDate,
+                estimatedEndDate: a.estimatedEndDate,
+                allocatedAmount: a.allocatedAmount,
+                expectedResults: a.expectedResults,
+                modules: {
+                   create: a.modules.map((am) => ({
+                     title: am.title,
+                     subtitle: am.subtitle,
+                     officialText: am.officialText,
+                     status: "TO_DONE",
+                     order: am.order,
+                     type: am.type,
+                     options: am.options,
+                     maxChars: am.maxChars,
+                     maxSelections: am.maxSelections,
+                     guidelines: am.guidelines
+                   })),
+                }
+              })),
+            },
+          })),
+        },
+      },
+    });
+
+    revalidatePath(`/dashboard/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to clone work:", error);
+    return { error: "Failed to clone work package" };
+  }
+}

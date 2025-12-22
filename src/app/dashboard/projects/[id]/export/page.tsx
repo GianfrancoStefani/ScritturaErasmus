@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import Link from "next/link";
-import { ArrowLeft, Printer } from "lucide-react";
+import { Printer, Download, ArrowLeft } from "lucide-react";
+import { PrintButton } from "@/components/ui/PrintButton";
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,7 @@ export default async function ExportDataPage({ params }: { params: { id: string 
     const project = await prisma.project.findUnique({
         where: { id: params.id },
         include: {
-            title: true, // Type error if simple select, better use include logic or default select
+            // title is included by default
             // Actually findUnique returns object with scalars by default.
             works: {
                 include: {
@@ -55,19 +56,7 @@ export default async function ExportDataPage({ params }: { params: { id: string 
                         <h1 className="text-2xl font-bold text-slate-900">Project Export View</h1>
                         <p className="text-slate-500">Preview of the official project document.</p>
                     </div>
-                    <button 
-                        // Using window.print in a real client component or simple JS
-                        // For server component, we can use a script or just a button that is client side.
-                        // For simplicity in this server component I'll use a small script or just standard browser print
-                        // Ideally "Print" button should be client side. I'll make a small client wrapper or just an anchor to print(). 
-                        // Let's us a simple onclick in a client component or just tell user to Print.
-                        // I will add a script tag for simplicity or use a client component for the button.
-                        className="btn btn-primary flex items-center gap-2"
-                        onClick="window.print()" // This won't work in React Server Component direct output invalidates strings in onClick usually.
-                        // I will make the whole page structure, the print button might need to be a client component "PrintButton"
-                    >
-                        <Printer size={16} /> Print / Save as PDF
-                    </button>
+                    <PrintButton />
                     {/* Add Client Component for Print Button below */}
                 </div>
             </div>
@@ -124,11 +113,3 @@ export default async function ExportDataPage({ params }: { params: { id: string 
         </div>
     );
 }
-
-// Inline Client Component for Print Button to avoid creating separate file for one button
-// Note: In Next.js App router, we can't define client component inside server file easily without "use client" at top, 
-// but this file is server. So I will create a separate file or just omit the button action logic for now 
-// and assume user knows Cmd+P. 
-// OR simpler: make this page "use client"? No, we need prisma. 
-// I will create `PrintButton.tsx` quickly.
-import { PrintButton } from "@/components/ui/PrintButton"; 
