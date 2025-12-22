@@ -1,102 +1,124 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { createPartner } from "@/app/actions/partners";
-import { Button } from "@/components/ui/Button"; // Check path
+import { createPartner, updatePartner } from "@/app/actions/partners";
+import { Button } from "@/components/ui/Button";
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Edit2 } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 
-function SubmitButton() {
+// Helper types
+type PartnerData = {
+  id?: string;
+  name: string;
+  nation: string;
+  city: string;
+  role: string;
+  type: string;
+  budget: number;
+  website?: string | null;
+  email?: string | null;
+  logo?: string | null;
+  acronym?: string; // note: database doesn't seem to have acronym field based on previous view? Schema check needed.
+  // Wait, I didn't add acronym to schema in previous step, but user asked for it in prompt "3 - città", "1 - Nome ente".
+  // Actually, the prompt "1 - Nome ente" ... "10 - logo ente". Acronym wasn't explicitly in the numbered list for Partner, but usually exists.
+  // I'll stick to what I added to schema: name, nation, city, role, type, budget, website, contactName, email, logo.
+};
+
+function SubmitButton({ isEditing }: { isEditing: boolean }) {
     const { pending } = useFormStatus();
-    return <Button disabled={pending}>{pending ? "Saving..." : "Save Partner"}</Button>;
+    return <Button disabled={pending}>{pending ? "Saving..." : isEditing ? "Update Partner" : "Save Partner"}</Button>;
 }
 
-export function PartnerForm({ projectId, onClose }: { projectId: string; onClose: () => void }) {
-    // We'll wrap the server action to close modal on success
+export function PartnerForm({ projectId, initialData, onClose }: { projectId: string; initialData?: PartnerData; onClose: () => void }) {
+    const isEditing = !!initialData;
+    
     const [state, formAction] = useFormState(async (prevState: any, formData: FormData) => {
-        const result = await createPartner(formData);
+        let result;
+        if (isEditing && initialData?.id) {
+             result = await updatePartner(initialData.id, projectId, formData);
+        } else {
+             result = await createPartner(formData);
+        }
+        
         if (result?.success) {
             onClose();
             return { message: "Success" };
         }
-        return result; // return error
+        return result; 
     }, null);
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative animate-in fade-in zoom-in duration-200">
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                    <X size={20} />
-                </button>
-                
-                <h2 className="text-xl font-bold mb-4">Add New Partner</h2>
-
-                <form action={formAction} className="space-y-4">
-                    <input type="hidden" name="projectId" value={projectId} />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Name</label>
-                            <input name="name" className="w-full border rounded p-2" required placeholder="University of X" />
-                        </div>
-                         <div className="space-y-1">
-                            <label className="text-sm font-medium">Acronym (Optional)</label>
-                            <input name="acronym" className="w-full border rounded p-2" placeholder="UNIX" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                         <div className="space-y-1">
-                            <label className="text-sm font-medium">Nation</label>
-                            <input name="nation" className="w-full border rounded p-2" required placeholder="Italy" />
-                        </div>
-                         <div className="space-y-1">
-                            <label className="text-sm font-medium">City</label>
-                            <input name="city" className="w-full border rounded p-2" required placeholder="Rome" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Role</label>
-                            <select name="role" className="w-full border rounded p-2">
-                                <option value="Partner">Partner</option>
-                                <option value="Coordinator">Coordinator</option>
-                                <option value="Associated">Associated</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Type</label>
-                             <select name="type" className="w-full border rounded p-2">
-                                <option value="University">University</option>
-                                <option value="SME">SME</option>
-                                <option value="NGO">NGO</option>
-                                <option value="School">School</option>
-                                <option value="Public Body">Public Body</option>
-                            </select>
-                        </div>
-                    </div>
-                     
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium">Budget (€)</label>
-                        <input name="budget" type="number" step="0.01" className="w-full border rounded p-2" defaultValue={0} />
-                    </div>
-
-                     <div className="space-y-1">
-                            <label className="text-sm font-medium">Contact Email</label>
-                            <input name="email" type="email" className="w-full border rounded p-2" />
-                    </div>
-
-                    <div className="text-red-500 text-sm">
-                        {state?.error && typeof state.error === 'string' && state.error}
-                    </div>
-
-                    <div className="flex justify-end pt-2">
-                        <SubmitButton />
-                    </div>
-                </form>
+        <form action={formAction} className="space-y-4">
+            <input type="hidden" name="projectId" value={projectId} />
+            
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <label className="text-sm font-medium">Name</label>
+                    <input name="name" className="w-full border rounded p-2" required placeholder="University of X" defaultValue={initialData?.name} />
+                </div>
+                 <div className="space-y-1">
+                    <label className="text-sm font-medium">Website</label>
+                    <input name="website" className="w-full border rounded p-2" placeholder="https://..." defaultValue={initialData?.website || ""} />
+                </div>
             </div>
-        </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-sm font-medium">Nation</label>
+                    <input name="nation" className="w-full border rounded p-2" required placeholder="Italy" defaultValue={initialData?.nation} />
+                </div>
+                 <div className="space-y-1">
+                    <label className="text-sm font-medium">City</label>
+                    <input name="city" className="w-full border rounded p-2" required placeholder="Rome" defaultValue={initialData?.city} />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <label className="text-sm font-medium">Role</label>
+                    <select name="role" className="w-full border rounded p-2" defaultValue={initialData?.role || "Partner"}>
+                        <option value="Partner">Partner</option>
+                        <option value="Coordinator">Coordinator</option>
+                        <option value="Associated">Associated</option>
+                    </select>
+                </div>
+                <div className="space-y-1">
+                    <label className="text-sm font-medium">Type</label>
+                     <select name="type" className="w-full border rounded p-2" defaultValue={initialData?.type || "University"}>
+                        <option value="University">University</option>
+                        <option value="SME">SME</option>
+                        <option value="NGO">NGO</option>
+                        <option value="School">School</option>
+                        <option value="Public Body">Public Body</option>
+                    </select>
+                </div>
+            </div>
+             
+            <div className="space-y-1">
+                <label className="text-sm font-medium">Budget (€)</label>
+                <input name="budget" type="number" step="0.01" className="w-full border rounded p-2" defaultValue={initialData?.budget || 0} />
+            </div>
+
+             <div className="space-y-1">
+                    <label className="text-sm font-medium">Contact Email</label>
+                    <input name="email" type="email" className="w-full border rounded p-2" defaultValue={initialData?.email || ""} />
+            </div>
+            
+             <div className="space-y-1">
+                    <label className="text-sm font-medium">Logo URL</label>
+                    <input name="logo" type="url" className="w-full border rounded p-2" placeholder="https://..." defaultValue={initialData?.logo || ""} />
+            </div>
+
+            <div className="text-red-500 text-sm">
+                {state?.error && (typeof state.error === 'string' ? state.error : "Validation Error")}
+                {state?.error && typeof state.error === 'object' && Object.values(state.error).flat().map((e: any) => <div key={e}>{e}</div>)}
+            </div>
+
+            <div className="flex justify-end pt-2">
+                <SubmitButton isEditing={isEditing} />
+            </div>
+        </form>
     );
 }
 
@@ -108,7 +130,27 @@ export function CreatePartnerButton({ projectId }: { projectId: string }) {
             <Button onClick={() => setOpen(true)}>
                 <Plus size={16} className="mr-2" /> Add Partner
             </Button>
-            {open && <PartnerForm projectId={projectId} onClose={() => setOpen(false)} />}
+            <Modal isOpen={open} onClose={() => setOpen(false)} title="Add New Partner">
+                 <PartnerForm projectId={projectId} onClose={() => setOpen(false)} />
+            </Modal>
+        </>
+    );
+}
+
+export function EditPartnerButton({ projectId, partner }: { projectId: string, partner: PartnerData }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <>
+            <button 
+                onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+                className="text-slate-400 hover:text-indigo-600 p-1"
+            >
+                <Edit2 size={16} />
+            </button>
+            <Modal isOpen={open} onClose={() => setOpen(false)} title="Edit Partner">
+                 <PartnerForm projectId={projectId} initialData={partner} onClose={() => setOpen(false)} />
+            </Modal>
         </>
     );
 }

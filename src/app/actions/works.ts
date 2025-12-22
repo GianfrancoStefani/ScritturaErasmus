@@ -33,6 +33,14 @@ export async function createWork(projectId: string, formData: FormData) {
         budget,
         startDate,
         endDate,
+        modules: {
+          create: {
+            title: "Work Package Description",
+            officialText: "<h2>Description</h2><p>Describe the objectives and deliverables of this work package.</p>",
+            status: "TO_DONE",
+            order: 0
+          }
+        }
       },
     });
 
@@ -57,5 +65,40 @@ export async function deleteWork(workId: string, projectId: string) {
   } catch (error) {
     console.error("Failed to delete work:", error);
     return { error: "Failed to delete work package" };
+  }
+}
+
+export async function updateWork(workId: string, projectId: string, formData: FormData) {
+  const validatedFields = WorkSchema.safeParse({
+    title: formData.get("title"),
+    budget: formData.get("budget"),
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate"),
+  });
+
+  if (!validatedFields.success) {
+    return { error: "Invalid fields" };
+  }
+
+  const { title, budget, startDate, endDate } = validatedFields.data;
+
+  try {
+    await prisma.work.update({
+      where: { id: workId },
+      data: {
+        title,
+        budget,
+        startDate,
+        endDate,
+      },
+    });
+
+    revalidatePath(`/dashboard/projects/${projectId}`);
+    revalidatePath(`/dashboard/works/${workId}`); // Revalidate self
+    revalidatePath("/dashboard/works");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update work:", error);
+    return { error: "Failed to update work package" };
   }
 }

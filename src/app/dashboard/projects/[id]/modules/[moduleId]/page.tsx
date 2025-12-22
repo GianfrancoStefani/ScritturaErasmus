@@ -1,47 +1,97 @@
 import prisma from "@/lib/prisma";
-import { Header } from "@/components/dashboard/Header";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import nextDynamic from "next/dynamic";
+import { ContributionStream } from "@/components/editor/ContributionStream";
+import { User } from "@prisma/client";
 
-export const dynamic = 'force-dynamic';
+const RichTextEditor = nextDynamic(
+  () => import("@/components/editor/RichTextEditor").then((mod) => mod.RichTextEditor),
+  { ssr: false, loading: () => <div className="h-64 bg-slate-50 animate-pulse rounded-lg" /> }
+);
+ export const dynamic = 'force-dynamic';
 
 export default async function ModuleEditorPage({ params }: { params: { id: string, moduleId: string } }) {
     const moduleData = await prisma.module.findUnique({
         where: { id: params.moduleId },
         include: {
-            project: { select: { title: true, acronym: true } }
+            project: { select: { title: true, acronym: true } },
+            components: {
+                include: { 
+                    author: true,
+                    comments: { include: { user: true }, orderBy: { createdAt: 'asc' } },
+                    ratings: true
+                },
+                orderBy: { order: 'asc' } // or createdAt desc
+            }
         }
     });
 
     if (!moduleData) return <div>Module not found</div>;
 
-    return (
-        <div className="flex dashboard-container">
-            <Sidebar />
-            <div className="flex-1 flex flex-col main-content">
-                <Header />
-                <main className="flex-1 flex flex-col" style={{ padding: '1.5rem', height: 'calc(100vh - 64px)' }}>
-                     <div style={{ marginBottom: '1rem', flexShrink: 0 }}>
-                        <Link 
-                            href={`/dashboard/projects/${params.id}`} 
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}
-                        >
-                            <ArrowLeft size={16} /> Back to {moduleData.project?.acronym || 'Project'}
-                        </Link>
-                        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a' }}>
-                            {moduleData.title}
-                        </h1>
-                     </div>
+    // MOCK AUTH: Get the first user found in the DB, preferably from this project
+    // In a real app, this comes from session
+    const mockUser = await prisma.user.findFirst({
+        where: { partner: { projectId: moduleData.projectId || undefined } } // Try to get project user
+    }) || await prisma.user.findFirst();
 
-                    <div style={{ flex: 1, minHeight: 0, paddingBottom: 0 }}>
-                         <RichTextEditor 
+    const currentUserId = mockUser?.id || "unknown";
+    const isManager = mockUser?.role === "Coordinator" || mockUser?.role === "Project Manager" || true; // Force true for demo
+
+    return (
+        <div className="flex flex-col h-[calc(100vh-6rem)]">
+             <div className="mb-4 flex-shrink-0 flex justify-between items-center">
+                <div>
+                    <Link 
+                        href={`/dashboard/projects/${params.id}`} 
+                        className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 mb-1 w-fit transition-colors"
+                    >
+                        <ArrowLeft size={16} /> Back to {moduleData.project?.acronym || 'Project'}
+                    </Link>
+                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        {moduleData.title}
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-xs font-normal text-slate-500 border border-slate-200">
+                            {moduleData.officialText ? "Drafting" : "Empty"}
+                        </span>
+                    </h1>
+                </div>
+                <div className="flex items-center gap-2">
+                    {mockUser && (
+                        <div className="text-xs text-slate-500 bg-amber-50 border border-amber-200 px-2 py-1 rounded">
+                            Simulated User: <b>{mockUser.name} {mockUser.surname}</b> ({mockUser.role})
+                        </div>
+                    )}
+                </div>
+             </div>
+
+            <div className="flex-1 min-h-0 flex gap-4">
+                {/* Left: Contribution Stream */}
+                <div className="w-1/3 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <ContributionStream 
+                        moduleId={moduleData.id}
+                        components={moduleData.components}
+                        currentUserId={currentUserId}
+                        isManager={isManager}
+                    />
+                </div>
+
+                {/* Right: Official Text Editor (The Master Document) */}
+                <div className="flex-1 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden relative">
+                     <div className="p-3 border-b bg-slate-50 border-slate-200 flex justify-between items-center">
+                        <span className="font-semibold text-slate-700 flex items-center gap-2">
+                            📄 Official Text
+                        </span>
+                        <span className="text-xs text-slate-400">
+                            Auto-saving...
+                        </span>
+                     </div>
+                     <div className="flex-1 overflow-y-auto bg-white">
+                        <RichTextEditor 
                             moduleId={moduleData.id} 
                             initialContent={moduleData.officialText || ""} 
-                         />
+                        />
                      </div>
-                </main>
+                </div>
             </div>
         </div>
     );

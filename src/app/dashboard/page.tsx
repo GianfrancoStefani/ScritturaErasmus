@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Plus, FolderGit2 } from 'lucide-react';
+import { Plus, FolderGit2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { format } from 'date-fns';
@@ -10,7 +10,7 @@ async function getProjects() {
     orderBy: { updatedAt: 'desc' },
     include: {
         _count: {
-            select: { modules: true } // simple count for now
+            select: { modules: true } 
         }
     }
   });
@@ -23,58 +23,68 @@ export default async function DashboardPage() {
   const projects = await getProjects();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-            <h1 className="text-2xl font-bold text-slate-800">Welcome back, Gianfranco</h1>
-            <p className="text-slate-500">Here are your active Erasmus+ projects.</p>
-        </div>
-        <Link href="/dashboard/projects/new">
-            <Button>
-                <Plus size={18} className="mr-2" /> New Project
-            </Button>
-        </Link>
-      </div>
-
-      {projects.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                <FolderGit2 size={32} />
+    <>
+        <div className="flex items-center justify-between mb-8">
+            <div>
+                <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
+                <p className="text-slate-500 mt-1">Welcome back. Here is what's happening today.</p>
             </div>
-            <h3 className="text-lg font-bold text-slate-700">No projects yet</h3>
-            <p className="text-slate-500 mb-6">Create your first Erasmus+ project to get started.</p>
             <Link href="/dashboard/projects/new">
-                <Button variant="secondary">Create Project</Button>
+                <Button className="shadow-lg shadow-indigo-500/20">
+                    <Plus size={18} className="mr-2" /> New Project
+                </Button>
             </Link>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {projects.map((project: any) => (
-                <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-t-4 border-blue-500 h-full">
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{project.acronym}</span>
-                            <span className="text-slate-400 text-xs">Due {format(project.endDate, 'MMM d, yyyy')}</span>
-                        </div>
-                        <h3 className="text-lg font-bold mb-2 line-clamp-1" title={project.title}>{project.title}</h3>
-                        <p className="text-sm text-slate-500 mb-4 line-clamp-2">
-                           National Agency: {project.nationalAgency} | Language: {project.language}
-                        </p>
-                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
-                            <div className="flex -space-x-2">
-                                {/* Placeholder for user avatars if we had assignments */}
-                                <div className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-xs text-slate-500 font-bold">GS</div>
-                            </div>
-                            <div className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">
-                                {project._count.modules} Modules
-                            </div>
-                        </div>
-                    </Card>
+
+        {projects.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
+                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-500">
+                    <FolderGit2 size={40} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">No projects yet</h3>
+                <p className="text-slate-500 mb-8 max-w-sm mx-auto">Create your first Erasmus+ project to start managing modules, partners, and budgets.</p>
+                <Link href="/dashboard/projects/new">
+                    <Button variant="secondary">Create Project</Button>
                 </Link>
-            ))}
-        </div>
-      )}
-    </div>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {projects.map((project: any) => (
+                    <Link key={project.id} href={`/dashboard/projects/${project.id}`} className="block group">
+                        <article className="card h-full flex flex-col relative overflow-hidden group-hover:border-indigo-200 transition-colors">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                            
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-wider">
+                                    {project.acronym}
+                                </div>
+                                <span className="text-slate-400 text-xs font-medium">
+                                    {format(project.endDate, 'MMM yyyy')}
+                                </span>
+                            </div>
+                            
+                            <h3 className="text-lg font-bold text-slate-800 mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                                {project.title}
+                            </h3>
+                            
+                            <div className="flex gap-2 mb-4 text-xs text-slate-500 font-medium">
+                                <span className="px-2 py-1 bg-slate-100 rounded">{project.nationalAgency}</span>
+                                <span className="px-2 py-1 bg-slate-100 rounded">{project.language}</span>
+                            </div>
+
+                            <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+                                <div className="text-xs text-slate-500 font-medium">
+                                    <span className="text-slate-900 font-bold">{project._count.modules}</span> Modules
+                                </div>
+                                <span className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
+                                    <ArrowRight size={18} />
+                                </span>
+                            </div>
+                        </article>
+                    </Link>
+                ))}
+            </div>
+        )}
+    </>
   );
 }
-

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { ChevronDown, ChevronRight, User, Building2, Briefcase } from 'lucide-react';
 import clsx from 'clsx';
-import { CreateUserButton } from './UserForm';
+import { CreatePartnerButton, EditPartnerButton } from './PartnerForm';
+import { CreateUserButton, EditUserButton } from './UserForm';
 import { DeleteButton } from '@/components/ui/DeleteButton';
 import { deletePartner, deleteUser } from '@/app/actions/partners';
 
@@ -14,6 +15,13 @@ interface UserData {
   name: string;
   surname: string;
   role: string;
+  prefix?: string | null;
+  photo?: string | null;
+  partnerId: string;
+  email: string;
+  username: string;
+  phone?: string | null;
+  landline?: string | null;
 }
 
 interface PartnerData {
@@ -21,7 +29,13 @@ interface PartnerData {
   projectId: string; // needed for delete revalidation
   name: string;
   nation: string;
+  city: string;
   role: string; 
+  type: string;
+  budget: number;
+  website?: string | null;
+  email?: string | null;
+  logo?: string | null;
   users: UserData[];
 }
 
@@ -72,6 +86,7 @@ function PartnerItem({ partner }: { partner: PartnerData }) {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                     <EditPartnerButton projectId={partner.projectId} partner={partner} />
                      <CreateUserButton partnerId={partner.id} />
                      <DeleteButton 
                         id={partner.id} 
@@ -93,23 +108,30 @@ function PartnerItem({ partner }: { partner: PartnerData }) {
                     {partner.users.map(user => (
                         <div key={user.id} className="flex items-center justify-between group py-1">
                              <div className="flex items-center gap-3">
-                                 <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                    {user.name.charAt(0)}{user.surname.charAt(0)}
-                                 </div>
+                                 {user.photo ? (
+                                    <img src={user.photo} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                                 ) : (
+                                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                        {user.name.charAt(0)}{user.surname.charAt(0)}
+                                    </div>
+                                 )}
                                  <div>
-                                     <p className="text-sm font-medium text-slate-700">{user.name} {user.surname}</p>
+                                     <p className="text-sm font-medium text-slate-700">{user.prefix} {user.name} {user.surname}</p>
                                      <div className="flex items-center gap-1 text-xs text-slate-400">
                                         <Briefcase size={12} />
                                         {user.role}
                                      </div>
                                  </div>
                              </div>
-                             <DeleteButton 
-                                id={user.id} 
-                                onDelete={deleteUser.bind(null, user.id, partner.projectId)}
-                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500"
-                                confirmMessage="Delete this user?"
-                             />
+                             <div className="flex items-center">
+                                <EditUserButton partnerId={partner.id} user={user} />
+                                <DeleteButton 
+                                    id={user.id} 
+                                    onDelete={deleteUser.bind(null, user.id, partner.projectId)}
+                                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500"
+                                    confirmMessage="Delete this user?"
+                                />
+                             </div>
                         </div>
                     ))}
                 </div>

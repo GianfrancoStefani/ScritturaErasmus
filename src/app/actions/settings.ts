@@ -4,8 +4,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth"; // Assuming this is where authOptions are
+import { auth } from "@/auth";
 
 const ProfileSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -24,8 +23,8 @@ const PasswordSchema = z.object({
 });
 
 export async function updateProfile(userId: string, formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.id !== userId) {
+  const session = await auth();
+  if (!session || !session.user || session.user.id !== userId) {
       return { error: "Unauthorized" };
   }
 
@@ -69,7 +68,8 @@ export async function updateProfile(userId: string, formData: FormData) {
 }
 
 export async function changePassword(userId: string, formData: FormData) {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
+
     if (!session || session.user.id !== userId) {
         return { error: "Unauthorized" };
     }

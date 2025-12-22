@@ -1,0 +1,109 @@
+"use client";
+
+import { useState } from "react";
+import { createTask, updateTask } from "@/app/actions/tasks";
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
+
+type TaskData = {
+  id?: string;
+  title: string;
+  budget: number;
+  startDate: Date;
+  endDate: Date;
+}
+
+interface TaskFormProps {
+  workId: string;
+  initialData?: TaskData;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+export function TaskForm({ workId, initialData, onSuccess, onCancel }: TaskFormProps) {
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const isEditing = !!initialData;
+
+  async function handleSubmit(formData: FormData) {
+    let result;
+    if (isEditing && initialData?.id) {
+       result = await updateTask(initialData.id, workId, formData);
+    } else {
+       result = await createTask(workId, formData);
+    }
+
+    if (result.error) {
+      setError(typeof result.error === "string" ? result.error : "An error occurred");
+    } else {
+      setError(null);
+      router.refresh(); 
+      if (onSuccess) onSuccess();
+    }
+  }
+
+  return (
+    <form action={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-white shadow-sm mt-4">
+      <div className="flex justify-between items-center">
+         <h3 className="font-semibold text-lg">{isEditing ? "Edit Task" : "Add New Task"}</h3>
+         {onCancel && <button type="button" onClick={onCancel} className="text-sm text-slate-500 hover:text-slate-700">Cancel</button>}
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium">Title</label>
+            <input 
+              name="title" 
+              type="text" 
+              required 
+              className="input-field" 
+              placeholder="Task Title" 
+              defaultValue={initialData?.title}
+            />
+        </div>
+        
+        <div className="flex flex-col gap-1">
+             <label className="text-sm font-medium">Budget</label>
+            <input 
+              name="budget" 
+              type="number" 
+              step="0.01" 
+              required 
+              className="input-field" 
+              placeholder="0.00" 
+              defaultValue={initialData?.budget}
+            />
+        </div>
+
+        <div className="flex flex-col gap-1">
+             <label className="text-sm font-medium">Start Date</label>
+            <input 
+              name="startDate" 
+              type="date" 
+              required 
+              className="input-field"
+              defaultValue={initialData?.startDate ? format(initialData.startDate, "yyyy-MM-dd") : ""}
+            />
+        </div>
+
+        <div className="flex flex-col gap-1">
+             <label className="text-sm font-medium">End Date</label>
+            <input 
+              name="endDate" 
+              type="date" 
+              required 
+              className="input-field"
+              defaultValue={initialData?.endDate ? format(initialData.endDate, "yyyy-MM-dd") : ""}
+            />
+        </div>
+      </div>
+
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+
+      <div className="flex justify-end gap-2">
+        {onCancel && <button type="button" onClick={onCancel} className="btn btn-ghost">Cancel</button>}
+        <button type="submit" className="btn btn-primary">{isEditing ? "Update Task" : "Create Task"}</button>
+      </div>
+    </form>
+  );
+}

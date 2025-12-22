@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useOptimistic, useTransition } from 'react';
+import { useState, useOptimistic, useTransition, useId } from 'react';
 import {
   DndContext,
   closestCorners,
@@ -9,6 +9,7 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  defaultDropAnimationSideEffects,
   DragStartEvent,
   DragOverEvent,
   DragEndEvent,
@@ -16,127 +17,122 @@ import {
 import {
   arrayMove,
   sortableKeyboardCoordinates,
+  SortableContext,
+  horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { updateModuleStatus } from '@/app/actions/kanban';
-import { useRouter } from 'next/navigation';
 
-export type ModuleStatus = 'TO_DONE' | 'UNDER_REVIEW' | 'DONE' | 'AUTHORIZED';
+export type ModuleStatus = "TO_DONE" | "UNDER_REVIEW" | "DONE" | "AUTHORIZED";
 
 export interface ModuleTask {
   id: string;
   title: string;
-  subtitle?: string;
+  subtitle: string;
   status: ModuleStatus;
-  user: string; // assigned user
-  projectTitle?: string;
+  user?: string;
 }
 
-const defaultCols: { id: ModuleStatus; title: string }[] = [
+interface KanbanBoardProps {
+    initialModules: ModuleTask[];
+}
+
+const columns: { id: ModuleStatus; title: string }[] = [
   { id: 'TO_DONE', title: 'To Do' },
-  { id: 'UNDER_REVIEW', title: 'Under Review' },
+  { id: 'UNDER_REVIEW', title: 'Review' },
   { id: 'DONE', title: 'Done' },
   { id: 'AUTHORIZED', title: 'Authorized' },
 ];
 
-export function KanbanBoard({ initialModules }: { initialModules: ModuleTask[] }) {
-  // Use optimistic UI for instant feedback
-  const [optimisticModules, addOptimisticModule] = useOptimistic(
-    initialModules,
-    (state, updatedModule: { id: string; status: ModuleStatus }) => {
-        return state.map((m) => m.id === updatedModule.id ? { ...m, status: updatedModule.status } : m);
-    }
-  );
-
+export function KanbanBoard({ initialModules }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
+
+  const [optimisticModules, setOptimisticModules] = useOptimistic(
+      initialModules,
+      (state, { id, status }: { id: string; status: ModuleStatus }) => {
+          return state.map(m => m.id === id ? { ...m, status } : m);
+      }
+  );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-        activationConstraint: {
-            distance: 5, // Prevent accidental drags
-        },
-    }),
+    useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  const columns = defaultCols;
-
-  function findContainer(id: string) {
-    if (columns.find((col) => col.id === id)) {
-      return id;
-    }
-    const task = optimisticModules.find((t) => t.id === id);
-    return task?.status;
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(event.active.id as string);
   }
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
+  function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    const activeContainer = findContainer(active.id as string);
-    const overContainer = over ? findContainer(over.id as string) : null;
+    setActiveId(null);
 
-    if (
-        !activeContainer ||
-        !overContainer ||
-        activeContainer === overContainer
-    ) {
-        setActiveId(null);
-        return;
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string; // Could be a container or a card
+
+    // Check if dropped on a container
+    let newStatus: ModuleStatus | null = null;
+    if (columns.some(col => col.id === overId)) {
+        newStatus = overId as ModuleStatus;
+    } else {
+        // Dropped on a card, find its status
+        const overCard = optimisticModules.find(m => m.id === overId);
+        if (overCard) {
+            newStatus = overCard.status;
+        }
     }
 
-    // It's a valid move to a different column
-    const newStatus = overContainer as ModuleStatus;
-    const moduleId = active.id as string;
-
-    startTransition(async () => {
-        // Optimistic update
-        addOptimisticModule({ id: moduleId, status: newStatus });
-        
-        // Server Action
-        await updateModuleStatus(moduleId, newStatus);
-        
-        // Refresh to get consistent state
-        // router.refresh(); // Not strictly needed if revalidatePath works, but safe.
-    });
-
-    setActiveId(null);
-  };
+    if (newStatus) {
+        const currentModule = optimisticModules.find(m => m.id === activeId);
+        if (currentModule && currentModule.status !== newStatus) {
+             startTransition(async () => {
+                 setOptimisticModules({ id: activeId, status: newStatus! });
+                 await updateModuleStatus(activeId, newStatus!);
+             });
+        }
+    }
+  }
 
   return (
-    <div className="flex h-full gap-6 overflow-x-auto pb-4">
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-        >
-            <div className="flex gap-6">
-                {columns.map((col) => (
-                    <KanbanColumn
-                        key={col.id}
-                        id={col.id}
-                        title={col.title}
-                        tasks={optimisticModules.filter((t) => t.status === col.id)}
-                    />
-                ))}
-            </div>
-            
-            <DragOverlay>
-                {activeId ? (
-                   <div className="opacity-80 rotate-2 scale-105">
-                        <KanbanCard task={optimisticModules.find((t) => t.id === activeId)!} />
-                   </div>
-                ) : null}
-            </DragOverlay>
-        </DndContext>
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex gap-6 h-full overflow-x-auto pb-4 px-2">
+        {columns.map((col) => (
+          <div key={col.id} className="flex-shrink-0 w-80 flex flex-col h-full rounded-xl bg-slate-100/50 border border-slate-200/60">
+             <div className="p-4 border-b border-slate-200/60 flex items-center justify-between bg-white/50 backdrop-blur-sm rounded-t-xl sticky top-0 z-10">
+                 <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">{col.title}</h3>
+                 <span className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                     {optimisticModules.filter(m => m.status === col.id).length}
+                 </span>
+             </div>
+             <div className="flex-1 p-3 overflow-y-auto">
+                 <KanbanColumn 
+                    id={col.id} 
+                    title={col.title} 
+                    tasks={optimisticModules.filter(m => m.status === col.id)} 
+                 />
+             </div>
+          </div>
+        ))}
+      </div>
+
+      <DragOverlay>
+        {activeId ? (
+           <div className="transform rotate-2 opacity-90 cursor-grabbing">
+             <KanbanCard task={optimisticModules.find(m => m.id === activeId)!} />
+           </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
