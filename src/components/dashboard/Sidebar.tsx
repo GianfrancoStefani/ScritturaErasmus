@@ -53,6 +53,15 @@ export function Sidebar({ projects = [] }: { projects?: any[] }) {
           });
           return acc;
       }
+      // Contextualize Works Link
+      if (item.label === 'Works & Budget' && projectId) {
+           acc.push({
+              ...item,
+              href: `/dashboard/projects/${projectId}`, // User asked for this specific redirect
+              activeMatch: (path: string) => path === `/dashboard/projects/${projectId}` || path.startsWith(`/dashboard/projects/${projectId}/works`)
+           });
+           return acc;
+      }
       acc.push(item);
       return acc;
   }, []);

@@ -140,3 +140,32 @@ export async function updateModuleMetadata(prevState: any, formData: FormData): 
         return { error: "Failed to update module" };
     }
 }
+
+export async function createAbstractModule(projectId: string) {
+    const existing = await prisma.module.findFirst({
+        where: { projectId, title: "Abstract" }
+    });
+    
+    if (existing) return { success: true, id: existing.id };
+
+    try {
+        const module = await prisma.module.create({
+            data: {
+                title: "Abstract",
+                type: "TEXT",
+                projectId: projectId,
+                order: 0, 
+                completion: 0,
+                maxChars: 5000
+            }
+        });
+        revalidatePath(`/dashboard/projects/${projectId}`);
+        return { success: true, id: module.id };
+    } catch (e) {
+        return { error: "Failed to create Abstract module" };
+    }
+}
+
+export async function getPrograms() {
+    return await prisma.program.findMany({ orderBy: { code: 'asc' } });
+}

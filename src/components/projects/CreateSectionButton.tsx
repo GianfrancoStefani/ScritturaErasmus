@@ -8,7 +8,7 @@ import { createSection } from "@/app/actions/sections";
 import { Plus } from "lucide-react";
 
 
-export function CreateSectionButton({ projectId }: { projectId: string }) {
+export function CreateSectionButton({ projectId, minimal = false }: { projectId: string, minimal?: boolean }) {
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [loading, setLoading] = useState(false);
@@ -28,9 +28,15 @@ export function CreateSectionButton({ projectId }: { projectId: string }) {
 
     return (
         <>
-            <Button size="sm" onClick={() => setOpen(true)} className="gap-2">
-                <Plus size={16} /> Add Section
-            </Button>
+            {minimal ? (
+                <Button size="sm" onClick={() => setOpen(true)} className="h-8 px-3 text-xs gap-1.5 bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm font-medium" title="Add Section">
+                    <Plus size={14} /> Add Section
+                </Button>
+            ) : (
+                <Button size="sm" onClick={() => setOpen(true)} className="gap-2">
+                    <Plus size={16} /> Add Section
+                </Button>
+            )}
 
             <Modal isOpen={open} onClose={() => setOpen(false)} title="Create New Section">
                 <form onSubmit={handleSubmit} className="space-y-4">

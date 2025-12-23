@@ -3,7 +3,7 @@ import clsx from 'clsx';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -21,6 +21,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             'border border-slate-300 bg-transparent hover:bg-slate-50 text-slate-700': variant === 'outline',
             'btn-sm': size === 'sm',
             'btn-lg': size === 'lg',
+            'h-9 w-9 p-0 flex items-center justify-center': size === 'icon',
           },
           className
         )}

@@ -57,21 +57,31 @@ export function CreateModuleButton({
     parentType, 
     className, 
     initialType = "TEXT",
-    label
+    label,
+    icon: Icon = Plus,
+    minimal = false
 }: { 
     parentId: string, 
     parentType: 'PROJECT' | 'WORK' | 'TASK' | 'ACTIVITY' | 'SECTION', 
     className?: string, 
     initialType?: 'TEXT' | 'POPUP',
-    label?: string
+    label?: string,
+    icon?: any,
+    minimal?: boolean
 }) {
     const [isOpen, setIsOpen] = useState(false);
     
     return (
         <>
-            <Button size="sm" onClick={() => setIsOpen(true)} className={className}>
-                <Plus size={16} className="mr-1" aria-hidden="true" /> {label || "Add Module"}
-            </Button>
+            {minimal ? (
+                <Button size="sm" onClick={() => setIsOpen(true)} className={`h-7 px-2 text-xs gap-1.5 ${className}`} title={label || "Add Module"} variant="ghost">
+                    <Icon size={14} aria-hidden="true" /> {label || "Add Module"}
+                </Button>
+            ) : (
+                <Button size="sm" onClick={() => setIsOpen(true)} className={className}>
+                    <Icon size={16} className="mr-1" aria-hidden="true" /> {label || "Add Module"}
+                </Button>
+            )}
             <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={`Create New ${initialType === 'POPUP' ? 'Popup' : 'Text'} Module`}>
                 <ModuleForm parentId={parentId} parentType={parentType} onClose={() => setIsOpen(false)} initialType={initialType} />
             </Modal>

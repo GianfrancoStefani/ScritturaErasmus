@@ -3,7 +3,7 @@
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
-import { Layers, ChevronDown, ChevronRight, Briefcase } from "lucide-react";
+import { Layers, ChevronDown, ChevronRight, Briefcase, Type, MessageSquare } from "lucide-react";
 import { ModuleItem } from "./ModuleItem";
 import { CreateModuleButton } from "@/components/modules/ModuleForm";
 import { Button } from "@/components/ui/Button";
@@ -16,7 +16,7 @@ import { ActivityForm } from "@/components/activities/ActivityForm";
 
 export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }: { work: any, projectId: string, partners?: any[], onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void }) {
     console.log(`[WorkPackageItem] Render ${work.title}. Modules:`, work.modules?.map((m: any) => m.title).join(', '));
-    const [isOpen, setIsOpen] = useState(true); // Main WP Expand
+    const [isOpen, setIsOpen] = useState(false); // Main WP Expand
     const [showModules, setShowModules] = useState(true); // Level 1 Modules
     const [showTasks, setShowTasks] = useState(true); // Tasks Section
 
@@ -103,8 +103,25 @@ export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }
                                         <div className="text-center py-2 text-xs text-slate-400 border border-dashed rounded">No modules</div>
                                     )}
                                 </SortableContext>
-                                <div className="pt-2 flex justify-center">
-                                    <CreateModuleButton parentId={work.id} parentType="WORK" className="text-xs" />
+                                <div className="pt-2 flex justify-center gap-1">
+                                    <CreateModuleButton 
+                                        parentId={work.id} 
+                                        parentType="WORK" 
+                                        initialType="TEXT"
+                                        label="Add Text" 
+                                        icon={Type}
+                                        minimal
+                                        className="text-slate-500 hover:text-indigo-600 border border-transparent hover:border-indigo-100 hover:bg-indigo-50" 
+                                    />
+                                    <CreateModuleButton 
+                                        parentId={work.id} 
+                                        parentType="WORK" 
+                                        initialType="POPUP"
+                                        label="Add Popup" 
+                                        icon={MessageSquare}
+                                        minimal
+                                        className="text-slate-500 hover:text-indigo-600 border border-transparent hover:border-indigo-100 hover:bg-indigo-50" 
+                                    />
                                 </div>
                             </div>
                         )}
@@ -155,8 +172,25 @@ export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }
                                                     />
                                                 ))}
                                             </SortableContext>
-                                            <div className="mt-2 text-center">
-                                                <CreateModuleButton parentId={task.id} parentType="TASK" className="text-[10px] py-0 h-6" label="Add Module" />
+                                            <div className="mt-2 text-center flex justify-center gap-1">
+                                                <CreateModuleButton 
+                                                    parentId={task.id} 
+                                                    parentType="TASK" 
+                                                    initialType="TEXT"
+                                                    label="Add Text" 
+                                                    icon={Type}
+                                                    minimal
+                                                    className="text-slate-500 hover:text-indigo-600 border border-transparent hover:border-indigo-100 hover:bg-indigo-50" 
+                                                />
+                                                <CreateModuleButton 
+                                                    parentId={task.id} 
+                                                    parentType="TASK" 
+                                                    initialType="POPUP"
+                                                    label="Add Popup" 
+                                                    icon={MessageSquare}
+                                                    minimal
+                                                    className="text-slate-500 hover:text-indigo-600 border border-transparent hover:border-indigo-100 hover:bg-indigo-50" 
+                                                />
                                             </div>
                                         </div>
 

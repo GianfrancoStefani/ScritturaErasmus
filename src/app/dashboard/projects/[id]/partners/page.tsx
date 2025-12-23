@@ -22,35 +22,29 @@ export default async function PartnersPage({ params }: { params: { id: string } 
     if (!project) return <div>Project not found</div>;
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
-            <Sidebar />
-            <div className="flex-1 flex flex-col">
-                <Header />
-                <main className="flex-1 p-8 overflow-y-auto">
-                     <div className="max-w-4xl mx-auto space-y-8">
-                         <div className="flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
-                                <Link href={`/dashboard/projects/${project.id}`} className="text-sm text-slate-500 hover:text-indigo-600 flex items-center gap-2 w-fit">
-                                    <ArrowLeft size={16} /> Back to Project
-                                </Link>
-                                <Link href="/dashboard/partners" className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-2">
-                                    <Users size={16} /> Global Partner Directory
-                                </Link>
-                            </div>
+        <div className="bg-slate-50 min-h-screen">
+             <div className="p-8 space-y-8 max-w-5xl mx-auto">
+                 <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <Link href={`/dashboard/projects/${project.id}`} className="text-sm text-slate-500 hover:text-indigo-600 flex items-center gap-2 w-fit">
+                            <ArrowLeft size={16} /> Back to Project
+                        </Link>
+                        <Link href="/dashboard/partners" className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-2">
+                            <Users size={16} /> Global Partner Directory
+                        </Link>
+                    </div>
 
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h1 className="text-2xl font-bold text-slate-900">Partners & Users</h1>
-                                    <p className="text-slate-500">Manage organizations and team members for <span className="font-semibold text-indigo-600">{project.acronym}</span>.</p>
-                                </div>
-                                <CreatePartnerButton projectId={project.id} />
-                            </div>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-900">Partners & Users</h1>
+                            <p className="text-slate-500">Manage organizations and team members for <span className="font-semibold text-indigo-600">{project.acronym}</span>.</p>
                         </div>
+                        <CreatePartnerButton projectId={project.id} />
+                    </div>
+                </div>
 
-                        <PartnerTree partners={project.partners} />
-                     </div>
-                </main>
-            </div>
+                <PartnerTree partners={project.partners} />
+             </div>
         </div>
     );
 }

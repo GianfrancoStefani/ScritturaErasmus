@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { searchOrganizations, createOrganization } from "@/app/actions/organizations";
 import { createUserAffiliation, deleteUserAffiliation, updateUserAffiliation } from "@/app/actions/affiliations";
-import { Building2, Plus, Trash2, Edit2, Phone, Mail, User, Briefcase, Save, X, ChevronDown } from "lucide-react";
+import { Building2, Plus, Trash2, Edit2, Phone, Mail, User, Briefcase, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { PROFESSIONAL_ROLES } from "@/constants/roles";
 
 export function AffiliationManager({ affiliations }: { affiliations: any[] }) {
     const [isCreating, setIsCreating] = useState(false);
@@ -59,7 +60,7 @@ function AffiliationForm({ onClose, initialData }: { onClose: () => void, initia
         const timer = setTimeout(async () => {
             if (orgSearch.length >= 2) {
                 const results = await searchOrganizations(orgSearch);
-                setOrgResults(results);
+                setOrgResults(results.data || []);
             } else {
                 setOrgResults([]);
             }
@@ -190,8 +191,6 @@ function AffiliationForm({ onClose, initialData }: { onClose: () => void, initia
                 <div>
                     <label className="text-xs font-semibold text-slate-500 mb-1 block">My Role</label>
                     <div className="relative">
-import { PROFESSIONAL_ROLES } from "@/constants/roles";
-
 // ... inside component ...
 
                         <select 

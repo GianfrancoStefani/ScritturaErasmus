@@ -26,11 +26,30 @@ model Project {
   invitations    Invitation[]
   namingProposals ProjectNameProposal[]
   
-  logoUrl        String?
   isTemplate     Boolean   @default(false)
+  
+  // New Setup Fields
+  budget         Float?
+  deadline       DateTime?
+  programId      String?
+  program        Program?  @relation(fields: [programId], references: [id])
   
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+model Program {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  allowedDurations Int[]    // PostGres array
+  allowedBudgets   Float[]  // PostGres array
+  nationalAgencies Json?    // Mapping like { "IT": "INDIRE", "DE": "NA_DE" }
+  
+  projects         Project[]
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Theme {
@@ -138,6 +157,7 @@ model Partner {
   users          User[]
   projectMembers ProjectMember[]
   leadingActivities Activity[] @relation("LeadingActivity")
+  invitations    Invitation[]
   
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -449,8 +469,10 @@ model Invitation {
   token     String   @unique
   status    String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED
   
-  // Optional: Pre-assigned role or partner if known?
-  // User says they choose Partner in the wizard, so keep generic.
+  // Optional: Pre-assigned role or partner
+  role      String?
+  partnerId String?
+  partner   Partner? @relation(fields: [partnerId], references: [id])
   
   expiresAt DateTime
   createdAt DateTime @default(now())

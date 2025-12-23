@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ArrowLeft, Plus, FileText, Layers, Calendar, Edit } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Layers, Calendar, Edit, Users, FileDown } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
@@ -15,7 +15,6 @@ import { SaveTemplateButton } from "@/components/projects/SaveTemplateButton";
 import { ProjectBoard } from "@/components/project/ProjectBoard";
 import { auth } from "@/auth";
 import { ProjectHeader } from "@/components/project/ProjectHeader";
-import { NamingChallenge } from "@/components/project/NamingChallenge";
 
 async function getProject(id: string) {
   const moduleInclude = {
@@ -88,16 +87,29 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     <div className="space-y-8 pb-20">
       {/* Header with Logo Upload */}
       <ProjectHeader project={project}>
-          <CreateSectionButton projectId={project.id} />
-          <Link href={`/dashboard/projects/${project.id}/partners`}>
-            <Button variant="secondary">Manage Partners</Button>
-          </Link>
-          <Link href={`/dashboard/projects/${project.id}/timeline`}>
-            <Button variant="secondary">Gantt Timeline</Button>
-          </Link>
-          <Link href={`/dashboard/projects/${project.id}/export`}>
-            <Button variant="secondary">Export PDF</Button>
-          </Link>
+          <CreateSectionButton projectId={project.id} minimal />
+          <div className="flex items-center gap-2">
+            <Link href={`/dashboard/projects/${project.id}/setup`} title="Setup & Info">
+                <Button variant="secondary" className="w-9 h-9 p-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200 flex items-center justify-center">
+                    <Edit size={16} />
+                </Button>
+            </Link>
+            <Link href={`/dashboard/projects/${project.id}/partners`} title="Manage Partners">
+                <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center">
+                    <Users size={16} />
+                </Button>
+            </Link>
+            <Link href={`/dashboard/projects/${project.id}/timeline`} title="Gantt Timeline">
+                <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center">
+                    <Calendar size={16} />
+                </Button>
+            </Link>
+            <Link href={`/dashboard/projects/${project.id}/export`} title="Export PDF">
+                <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center">
+                    <FileDown size={16} />
+                </Button>
+            </Link>
+          </div>
           <SaveTemplateButton projectId={project.id} projectTitle={project.title} />
           <DeleteButton 
             id={project.id} 
@@ -106,11 +118,6 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             confirmMessage="Are you sure you want to delete this ENTIRE project?"
           />
       </ProjectHeader>
-
-      {/* Naming Challenge */}
-      {session?.user?.id && (
-          <NamingChallenge projectId={project.id} userId={session.user.id} />
-      )}
 
       {/* Project Board (Client Component handling DND and Layout) */}
       <ProjectBoard project={project} />
@@ -165,7 +172,7 @@ function WorkPackageCard({ work, index, projectId }: { work: any, index: number,
                     </span>
                 </div>
                 <div className="flex gap-2">
-                    <CreateModuleButton parentId={work.id} parentType="WORK" className="text-xs h-8" />
+                    <CreateModuleButton parentId={work.id} parentType="WORK" minimal label="Quick Add Module" className="text-slate-400 hover:text-indigo-600" />
                     <Link href={`/dashboard/works/${work.id}`}>
                         <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
                             Manage Tasks

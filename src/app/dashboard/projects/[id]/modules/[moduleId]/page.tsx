@@ -11,7 +11,7 @@ const AdvancedModuleEditor = nextDynamic(
 );
  export const dynamic = 'force-dynamic';
 
-export default async function ModuleEditorPage({ params }: { params: { id: string, moduleId: string } }) {
+export default async function ModuleEditorPage({ params, searchParams }: { params: { id: string, moduleId: string }, searchParams: { [key: string]: string | string[] | undefined } }) {
     const moduleData = await prisma.module.findUnique({
         where: { id: params.moduleId },
         include: {
@@ -40,6 +40,12 @@ export default async function ModuleEditorPage({ params }: { params: { id: strin
 
     if (!moduleData) return <div>Module not found</div>;
 
+    // Check for returnTo param
+    const returnTo = typeof searchParams.returnTo === 'string' ? searchParams.returnTo : undefined;
+    const backLink = returnTo || `/dashboard/projects/${params.id}`;
+
+    // ... continued ...
+
     // MOCK AUTH: Get the first user found in the DB, preferably from this project
     // In a real app, this comes from session
     const mockUser = await prisma.user.findFirst({
@@ -54,10 +60,10 @@ export default async function ModuleEditorPage({ params }: { params: { id: strin
              <div className="mb-4 flex-shrink-0 flex justify-between items-center">
                 <div>
                     <Link 
-                        href={`/dashboard/projects/${params.id}`} 
+                        href={backLink} 
                         className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 mb-1 w-fit transition-colors"
                     >
-                        <ArrowLeft size={16} /> Back to {moduleData.project?.acronym || 'Project'}
+                        <ArrowLeft size={16} /> Back to {returnTo ? 'Project Setup' : (moduleData.project?.acronym || 'Project')}
                     </Link>
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                         {moduleData.title}

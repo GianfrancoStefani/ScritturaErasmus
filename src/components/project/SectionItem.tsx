@@ -3,12 +3,12 @@
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
-import { Layers, ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { Layers, ChevronDown, ChevronRight, Plus, Type, MessageSquare } from "lucide-react";
 import { ModuleItem } from "./ModuleItem";
 import { CreateModuleButton } from "@/components/modules/ModuleForm";
 
 export function SectionItem({ section, projectId, onMoveModule }: { section: any, projectId: string, onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void }) {
-    const [isOpen, setIsOpen] = useState(true);
+    const [isOpen, setIsOpen] = useState(false);
 
     // If we want the SECTION itself to be sortable, we hook useSortable here.
     // Assuming sections are just static containers for now or also sortable?
@@ -51,10 +51,26 @@ export function SectionItem({ section, projectId, onMoveModule }: { section: any
                      </button>
                 </div>
                 
-                <div className="flex items-center gap-2">
-                    <CreateModuleButton parentId={section.id} parentType="SECTION" initialType="TEXT" label="Add Text" className="text-xs" />
-                    <CreateModuleButton parentId={section.id} parentType="SECTION" initialType="POPUP" label="Add Popup" className="text-xs" />
-                    <button onClick={() => setIsOpen(!isOpen)} className="text-slate-400 hover:text-slate-600">
+                <div className="flex items-center gap-1">
+                    <CreateModuleButton 
+                        parentId={section.id} 
+                        parentType="SECTION" 
+                        initialType="TEXT" 
+                        label="Add Text" 
+                        icon={Type}
+                        minimal 
+                        className="text-slate-500 hover:text-indigo-600 border border-transparent hover:border-indigo-100 hover:bg-indigo-50" 
+                    />
+                    <CreateModuleButton 
+                        parentId={section.id} 
+                        parentType="SECTION" 
+                        initialType="POPUP" 
+                        label="Add Popup" 
+                        icon={MessageSquare}
+                        minimal 
+                        className="text-slate-500 hover:text-indigo-600 border border-transparent hover:border-indigo-100 hover:bg-indigo-50" 
+                    />
+                    <button onClick={() => setIsOpen(!isOpen)} className="text-slate-400 hover:text-slate-600 p-1">
                         {isOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                     </button>
                 </div>

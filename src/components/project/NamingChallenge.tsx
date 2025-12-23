@@ -55,34 +55,33 @@ export function NamingChallenge({ projectId, userId }: { projectId: string; user
 
     // Calculate ranking visual
     const getRankIcon = (index: number) => {
-        if (index === 0) return <Trophy className="text-yellow-500" size={20} />;
-        if (index === 1) return <Medal className="text-slate-400" size={20} />; // Silver
-        if (index === 2) return <Medal className="text-amber-700" size={20} />; // Bronze
-        return <span className="text-slate-400 font-bold ml-1">{index + 1}</span>;
+        if (index === 0) return <Trophy className="text-yellow-500" size={24} />;
+        if (index === 1) return <Medal className="text-slate-400" size={24} />; 
+        if (index === 2) return <Medal className="text-amber-700" size={24} />; 
+        return <span className="font-mono text-slate-400 font-bold ml-2 text-lg">#{index + 1}</span>;
     };
 
     return (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white flex justify-between items-center">
+            <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50">
                 <div>
-                    <h3 className="font-bold flex items-center gap-2">
-                        <Award size={20} className="text-yellow-300" />
-                        Project Naming Challenge
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <Award className="text-indigo-600" /> Naming Challenge
                     </h3>
-                    <p className="text-xs text-indigo-100 opacity-90">Propose a title & acronym. Vote for the best one!</p>
+                    <p className="text-sm text-slate-500">Collaborate to choose the best Title and Acronym for this project.</p>
                 </div>
-                <div className="flex bg-white/10 rounded-lg p-1">
+                <div className="bg-slate-200/50 p-1 rounded-lg flex">
                     <button 
                         onClick={() => setActiveTab("VOTE")}
-                        className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${activeTab === 'VOTE' ? 'bg-white text-indigo-600' : 'text-indigo-100 hover:bg-white/10'}`}
+                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === 'VOTE' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Leaderboard & Vote
+                        Leaderboard
                     </button>
                     <button 
                         onClick={() => setActiveTab("PROPOSE")}
-                        className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${activeTab === 'PROPOSE' ? 'bg-white text-indigo-600' : 'text-indigo-100 hover:bg-white/10'}`}
+                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === 'PROPOSE' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Submit Proposal
+                        New Proposal
                     </button>
                 </div>
             </div>
@@ -129,49 +128,54 @@ export function NamingChallenge({ projectId, userId }: { projectId: string; user
                                 const myVote = p.votes.find((v: any) => v.userId === userId)?.stars || 0;
 
                                 return (
-                                    <div key={p.id} className={`flex items-center gap-4 p-4 rounded-lg border ${index < 3 ? 'border-indigo-100 bg-indigo-50/50' : 'border-slate-100 bg-white'}`}>
+                                    <div key={p.id} className={`relative flex items-center gap-4 p-4 rounded-lg border ${index < 3 ? 'border-indigo-100 bg-indigo-50/50' : 'border-slate-100 bg-white'}`}>
+                                        {/* Rank Badge for top 3 */}
+                                        {index < 3 && (
+                                            <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-sm border border-white">
+                                                {index + 1}
+                                            </div>
+                                        )}
+                                        
                                         <div className="w-8 flex justify-center flex-shrink-0">
-                                            {getRankIcon(index)}
+                                            {index >= 3 && <span className="font-mono text-slate-400 font-bold text-sm text-center w-full">#{index + 1}</span>}
                                         </div>
                                         
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded shadow-sm">{p.acronym}</span>
-                                                <h4 className="font-bold text-slate-800">{p.title}</h4>
+                                        <div className="flex-1 min-w-0 px-2">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm flex-shrink-0 whitespace-nowrap uppercase tracking-wider">{p.acronym}</span>
+                                                <h4 className="font-bold text-slate-800 truncate text-sm">{p.title}</h4>
                                             </div>
-                                            <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">
                                                 <span className="flex items-center gap-1">
                                                     {p.user?.photo ? (
-                                                        <img src={p.user.photo} alt={p.user.name || "User photo"} className="w-4 h-4 rounded-full object-cover" />
+                                                        <img src={p.user.photo} alt={p.user.name || "User photo"} className="w-3 h-3 rounded-full object-cover" />
                                                     ) : (
-                                                        <User size={12} />
+                                                        <User size={10} />
                                                     )}
-                                                    {p.user?.name} {p.user?.surname}
+                                                    <span className="truncate">{p.user?.name} {p.user?.surname}</span>
                                                 </span>
-                                                <span>•</span>
-                                                <span>{new Date(p.createdAt).toLocaleDateString()}</span>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-1">
-                                            {/* Star Rating Interaction */}
-                                            <div className="flex gap-1" onMouseLeave={() => {}}>
+                                        <div className="flex flex-col items-end gap-0.5">
+                                            {/* Star Rating Interaction - Smaller */}
+                                            <div className="flex gap-0.5" onMouseLeave={() => {}}>
                                                 {[1, 2, 3, 4, 5].map((star) => (
                                                     <button 
                                                         key={star}
                                                         onClick={() => !isMyProposal && handleVote(p.id, star)}
-                                                        disabled={isMyProposal} // Cannot vote for own? Assuming user shouldn't bias ranking too easily, but requirements said "all users". If allowed, remove disabled. I'll keep disabled for self to prevent farming.
+                                                        disabled={isMyProposal} 
                                                         className={`transition-all ${isMyProposal ? 'cursor-not-allowed opacity-50' : 'hover:scale-110'}`}
                                                         title={isMyProposal ? "You cannot vote for your own proposal" : `Vote ${star} stars`}
                                                     >
                                                         <Star 
-                                                            size={18} 
-                                                            className={star <= myVote ? "fill-yellow-400 text-yellow-500" : "text-slate-300"} 
+                                                            size={14} 
+                                                            className={star <= myVote ? "fill-yellow-400 text-yellow-500" : "text-slate-200"} 
                                                         />
                                                     </button>
                                                 ))}
                                             </div>
-                                            <p className="text-[10px] text-slate-400 font-medium">
+                                            <p className="text-[9px] text-slate-400 font-medium">
                                                 {p.voteCount} votes
                                             </p>
                                         </div>

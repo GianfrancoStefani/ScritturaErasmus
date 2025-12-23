@@ -62,6 +62,27 @@ export function ProjectHeader({ project, children }: ProjectHeaderProps) {
                             </span>
                         </div>
                         <h1 className="text-3xl font-bold text-slate-900">{project.title}</h1>
+                        
+                        {/* Deadline Countdown */}
+                        {project.deadline && (() => {
+                            const deadlineDate = new Date(project.deadline);
+                            const now = new Date();
+                            const diffTime = deadlineDate.getTime() - now.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            
+                            let colorClass = "bg-green-50 text-green-700 border-green-200";
+                            if (diffDays < 10) colorClass = "bg-red-50 text-red-700 border-red-200 animate-pulse";
+                            else if (diffDays < 30) colorClass = "bg-orange-50 text-orange-700 border-orange-200";
+                            
+                            return (
+                                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-md border text-xs font-bold mt-2 ${colorClass}`}>
+                                    <span className="uppercase tracking-wider">Submission Deadline:</span>
+                                    <span className="text-sm">{format(deadlineDate, 'dd MMM yyyy')}</span>
+                                    <span className="w-px h-3 bg-current opacity-20 mx-1"></span>
+                                    <span>{diffDays > 0 ? `${diffDays} days left` : "Expired"}</span>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
                 
