@@ -36,8 +36,16 @@ export default async function PartnersPage() {
                     <div key={partner.id} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-4">
                              <div className="w-12 h-12 bg-indigo-50 rounded-lg flex items-center justify-center text-xl font-bold text-indigo-600">
-                                {partner.logo ? (
-                                    <img src={partner.logo} alt={partner.name} className="w-full h-full object-cover rounded-lg" />
+                                {partner.logo && (partner.logo.startsWith('http') || partner.logo.startsWith('/')) ? (
+                                    <img 
+                                        src={partner.logo} 
+                                        alt={partner.name} 
+                                        className="w-full h-full object-cover rounded-lg" 
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.parentElement!.innerText = partner.name[0];
+                                        }}
+                                    />
                                 ) : (
                                     partner.name[0]
                                 )}

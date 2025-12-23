@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { searchOrganizations, createOrganization } from "@/app/actions/organizations";
 import { createUserAffiliation, deleteUserAffiliation, updateUserAffiliation } from "@/app/actions/affiliations";
-import { Building2, Plus, Trash2, Edit2, Phone, Mail, User, Briefcase, Save, X } from "lucide-react";
+import { Building2, Plus, Trash2, Edit2, Phone, Mail, User, Briefcase, Save, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 export function AffiliationManager({ affiliations }: { affiliations: any[] }) {
@@ -189,13 +189,28 @@ function AffiliationForm({ onClose, initialData }: { onClose: () => void, initia
                 </div>
                 <div>
                     <label className="text-xs font-semibold text-slate-500 mb-1 block">My Role</label>
-                    <Input 
-                        placeholder="e.g. Professor / Manager" 
-                        value={data.role} 
-                        onChange={e => setData({...data, role: e.target.value})}
-                        className="bg-white"
-                        aria-label="Role"
-                    />
+                    <div className="relative">
+import { PROFESSIONAL_ROLES } from "@/constants/roles";
+
+// ... inside component ...
+
+                        <select 
+                            value={data.role} 
+                            onChange={e => setData({...data, role: e.target.value})}
+                            className="w-full border border-slate-200 rounded px-2 py-2 text-sm bg-white focus:border-indigo-500 outline-none appearance-none"
+                            aria-label="Role"
+                        >
+                            <option value="">Select Role...</option>
+                            {Object.entries(PROFESSIONAL_ROLES).map(([category, roles]) => (
+                                <optgroup key={category} label={category}>
+                                    {roles.map(role => (
+                                        <option key={role} value={role}>{role}</option>
+                                    ))}
+                                </optgroup>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                    </div>
                 </div>
                 
                 <div className="col-span-2 grid grid-cols-3 gap-4 border-t border-slate-200 pt-3 mt-1">

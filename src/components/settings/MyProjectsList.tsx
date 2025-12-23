@@ -28,7 +28,8 @@ function ProjectMembershipItem({ membership, userId, affiliations }: { membershi
     const [data, setData] = useState({
         participationMode: membership.participationMode || "",
         projectRole: membership.projectRole || "",
-        customDailyRate: membership.customDailyRate || 0,
+        // Initialize Monthly Rate for UI (Daily * 20)
+        customMonthlyRate: (membership.customDailyRate || 0) * 20,
         // Legacy or Linked
         organizationId: membership.organizationId || "",
         userAffiliationId: membership.userAffiliationId || "",
@@ -36,6 +37,8 @@ function ProjectMembershipItem({ membership, userId, affiliations }: { membershi
     });
 
     const project = membership.project;
+    
+    if (!project) return null;
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -43,7 +46,9 @@ function ProjectMembershipItem({ membership, userId, affiliations }: { membershi
         formData.append("projectId", project.id);
         formData.append("participationMode", data.participationMode);
         formData.append("projectRole", data.projectRole);
-        formData.append("customDailyRate", data.customDailyRate.toString());
+        // Save back as Daily Rate (Monthly / 20)
+        const dailyRate = data.customMonthlyRate / 20;
+        formData.append("customDailyRate", dailyRate.toString());
         formData.append("organizationId", data.organizationId);
         formData.append("userAffiliationId", data.userAffiliationId);
 
@@ -183,17 +188,23 @@ function ProjectMembershipItem({ membership, userId, affiliations }: { membershi
                 </div>
 
                 <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Daily Rate (€)</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Monthly Rate (€)</label>
                     {isEditing ? (
-                        <input 
-                            type="number"
-                            className="w-full border border-slate-200 rounded px-2 py-1 text-sm focus:border-indigo-500 outline-none"
-                            value={data.customDailyRate}
-                            onChange={(e) => setData({ ...data, customDailyRate: parseFloat(e.target.value) })}
-                            aria-label="Daily Rate"
-                        />
+                        <div className="relative">
+                            <input 
+                                type="number"
+                                className="w-full border border-slate-200 rounded px-2 py-1 text-sm focus:border-indigo-500 outline-none"
+                                value={data.customMonthlyRate}
+                                onChange={(e) => setData({ ...data, customMonthlyRate: parseFloat(e.target.value) })}
+                                aria-label="Monthly Rate"
+                            />
+                            <div className="text-[10px] text-slate-400 mt-1">Based on 20 days/mo</div>
+                        </div>
                     ) : (
-                        <p className="text-slate-700 font-medium">€{data.customDailyRate?.toFixed(2) || "0.00"}</p>
+                        <div>
+                            <p className="text-slate-700 font-medium">€{data.customMonthlyRate?.toFixed(2) || "0.00"}</p>
+                             <p className="text-[10px] text-slate-400">Daily: €{(data.customMonthlyRate / 20).toFixed(2)}</p>
+                        </div>
                     )}
                 </div>
             </div>

@@ -156,3 +156,7 @@ export function ActivityForm({ parentId, projectId, activity, partners, classNam
         </>
     );
 }
+
+export function CreateActivityButton(props: Omit<ActivityFormProps, 'activity'>) {
+    return <ActivityForm {...props} />;
+}

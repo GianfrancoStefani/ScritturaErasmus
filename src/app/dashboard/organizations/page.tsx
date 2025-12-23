@@ -9,11 +9,17 @@ export default async function OrganizationsPage() {
     const isAdmin = (session?.user as any)?.role === 'ADMIN';
 
     // Fetch initial list (limit 50)
-    const orgs = await prisma.organization.findMany({
-        take: 50,
-        orderBy: { name: 'asc' },
-        include: { departments: true }
-    });
+    let orgs = [];
+    try {
+        orgs = await prisma.organization.findMany({
+            take: 50,
+            orderBy: { name: 'asc' },
+            include: { departments: true }
+        });
+    } catch (e) {
+        console.error("Failed to load organizations:", e);
+        // orgs remains []
+    }
 
     return (
         <div className="space-y-6">

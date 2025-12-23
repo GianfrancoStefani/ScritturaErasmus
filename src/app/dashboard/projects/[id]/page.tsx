@@ -13,6 +13,9 @@ import { CreateModuleButton, EditModuleButton } from "@/components/modules/Modul
 import { CreateSectionButton } from "@/components/projects/CreateSectionButton";
 import { SaveTemplateButton } from "@/components/projects/SaveTemplateButton";
 import { ProjectBoard } from "@/components/project/ProjectBoard";
+import { auth } from "@/auth";
+import { ProjectHeader } from "@/components/project/ProjectHeader";
+import { NamingChallenge } from "@/components/project/NamingChallenge";
 
 async function getProject(id: string) {
   const moduleInclude = {
@@ -76,49 +79,38 @@ async function getProject(id: string) {
 export const dynamic = 'force-dynamic';
 
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const session = await auth();
   const project = await getProject(params.id);
 
   if (!project) notFound();
 
   return (
     <div className="space-y-8 pb-20">
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        <Link href="/dashboard" className="text-sm text-slate-500 hover:text-indigo-600 flex items-center gap-2 w-fit">
-            <ArrowLeft size={16} /> Back to Dashboard
-        </Link>
-        
-        <div className="flex justify-between items-start">
-            <div>
-                <div className="flex items-center gap-3 mb-2">
-                    <span className="bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded text-sm">{project.acronym}</span>
-                    <span className="text-slate-400 text-xs flex items-center gap-1">
-                        <Calendar size={12} /> {format(project.startDate, 'MMM yyyy')} - {format(project.endDate, 'MMM yyyy')}
-                    </span>
-                </div>
-                <h1 className="text-3xl font-bold text-slate-900">{project.title}</h1>
-            </div>
-            <div className="flex gap-2">
-                 <CreateSectionButton projectId={project.id} />
-                 <Link href={`/dashboard/projects/${project.id}/partners`}>
-                    <Button variant="secondary">Manage Partners</Button>
-                 </Link>
-                 <Link href={`/dashboard/projects/${project.id}/timeline`}>
-                    <Button variant="secondary">Gantt Timeline</Button>
-                 </Link>
-                 <Link href={`/dashboard/projects/${project.id}/export`}>
-                    <Button variant="secondary">Export PDF</Button>
-                 </Link>
-                 <SaveTemplateButton projectId={project.id} projectTitle={project.title} />
-                 <DeleteButton 
-                    id={project.id} 
-                    onDelete={deleteProject} 
-                    redirectAfter="/dashboard/projects"
-                    confirmMessage="Are you sure you want to delete this ENTIRE project?"
-                 />
-            </div>
-        </div>
-      </div>
+      {/* Header with Logo Upload */}
+      <ProjectHeader project={project}>
+          <CreateSectionButton projectId={project.id} />
+          <Link href={`/dashboard/projects/${project.id}/partners`}>
+            <Button variant="secondary">Manage Partners</Button>
+          </Link>
+          <Link href={`/dashboard/projects/${project.id}/timeline`}>
+            <Button variant="secondary">Gantt Timeline</Button>
+          </Link>
+          <Link href={`/dashboard/projects/${project.id}/export`}>
+            <Button variant="secondary">Export PDF</Button>
+          </Link>
+          <SaveTemplateButton projectId={project.id} projectTitle={project.title} />
+          <DeleteButton 
+            id={project.id} 
+            onDelete={deleteProject} 
+            redirectAfter="/dashboard/projects"
+            confirmMessage="Are you sure you want to delete this ENTIRE project?"
+          />
+      </ProjectHeader>
+
+      {/* Naming Challenge */}
+      {session?.user?.id && (
+          <NamingChallenge projectId={project.id} userId={session.user.id} />
+      )}
 
       {/* Project Board (Client Component handling DND and Layout) */}
       <ProjectBoard project={project} />
@@ -272,6 +264,7 @@ function ModuleCard({ module, projectId }: { module: any, projectId: string }) {
                             <span>{module.completion}%</span>
                         </div>
                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                            {/* eslint-disable-next-line react-dom/no-unsafe-inline-style */}
                             <div 
                                 className="h-full bg-blue-500 rounded-full transition-all" 
                                 style={{ width: `${module.completion}%` }} 

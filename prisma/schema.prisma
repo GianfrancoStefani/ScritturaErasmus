@@ -24,7 +24,9 @@ model Project {
   sections       Section[]
   members        ProjectMember[]
   invitations    Invitation[]
+  namingProposals ProjectNameProposal[]
   
+  logoUrl        String?
   isTemplate     Boolean   @default(false)
   
   createdAt      DateTime  @default(now())
@@ -151,7 +153,10 @@ model User {
   role           String    // Hierarchical role in partner/project
   surname        String
   name           String
-  prefix         String?
+  prefix         String?   // Dr., Prof., etc.
+  gender         String?
+  birthDate      DateTime?
+  birthPlace     String?
   photo          String?
   email          String    @unique
   phone          String?
@@ -168,6 +173,9 @@ model User {
   memberships    ProjectMember[]
   affiliations   UserAffiliation[]
   availabilities UserAvailability[]
+  
+  namingProposals ProjectNameProposal[]
+  namingVotes     ProjectNameVote[]
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -306,7 +314,14 @@ model Organization {
   address     String?
   logoUrl     String?
   website     String?
+  unirankUrl  String?
   email       String?
+  
+  // Extended ECHE Data
+  erasmusCode String? // e.g. I BOLOGNA01
+  oid         String? // Organisation ID
+  pic         String? // Participant Identification Code
+  favicon     String? 
   
   departments Department[]
   affiliations UserAffiliation[]
@@ -442,4 +457,33 @@ model Invitation {
   updatedAt DateTime @updatedAt
   
   @@unique([email, projectId])
+}
+
+model ProjectNameProposal {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title     String
+  acronym   String
+  
+  votes     ProjectNameVote[]
+  
+  createdAt DateTime @default(now())
+}
+
+model ProjectNameVote {
+  id         String              @id @default(cuid())
+  proposalId String
+  proposal   ProjectNameProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  stars      Int // 1-5
+  
+  createdAt  DateTime @default(now())
+
+  @@unique([proposalId, userId])
 }

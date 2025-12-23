@@ -11,8 +11,9 @@ const OrganizationSchema = z.object({
   type: z.string().optional(),
   nation: z.string().optional(),
   address: z.string().optional(),
-  logoUrl: z.string().optional(),
+  logoUrl: z.string().optional().nullable(),
   website: z.string().optional(),
+  unirankUrl: z.string().optional(),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
 });
 
@@ -32,6 +33,7 @@ export async function createOrganization(formData: FormData) {
      address: formData.get("address"),
      logoUrl: formData.get("logoUrl"),
      website: formData.get("website"),
+     unirankUrl: formData.get("unirankUrl"),
      email: formData.get("email"),
   };
 
@@ -39,10 +41,13 @@ export async function createOrganization(formData: FormData) {
 
   if (!validated.success) {
       console.error("Validation Error:", validated.error);
-      return { error: "Invalid data: " + validated.error.errors.map(e => e.message).join(", ") };
+      const errorMsg = Object.entries(validated.error.flatten().fieldErrors)
+          .map(([field, errors]) => `${field}: ${errors?.join(", ")}`)
+          .join("; ");
+      return { error: "Invalid data: " + errorMsg };
   }
   
-  const { name, shortName, type, nation, address, logoUrl, website, email } = validated.data;
+  const { name, shortName, type, nation, address, logoUrl, website, unirankUrl, email } = validated.data;
 
   try {
      const org = await prisma.organization.create({
@@ -54,15 +59,63 @@ export async function createOrganization(formData: FormData) {
              address, 
              logoUrl, 
              website, 
+             unirankUrl,
              email: email || null 
          }
      });
      revalidatePath("/dashboard/organizations");
      return { success: true, organization: org };
-  } catch(e) {
+  } catch(e: any) {
      console.error("Create Org Error:", e);
      return { error: "Failed to create organization. It might already exist." };
   }
+}
+
+export async function updateOrganization(id: string, formData: FormData) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    const rawData = {
+        name: formData.get("name"),
+        shortName: formData.get("shortName"),
+        type: formData.get("type"),
+        nation: formData.get("nation"),
+        address: formData.get("address"),
+        logoUrl: formData.get("logoUrl"),
+        website: formData.get("website"),
+        unirankUrl: formData.get("unirankUrl"),
+        email: formData.get("email"),
+    };
+
+    const validated = OrganizationSchema.safeParse(rawData);
+
+    if (!validated.success) {
+        return { error: "Invalid data: " + (validated.error as any).errors.map((e: any) => e.message).join(", ") };
+    }
+    
+    const { name, shortName, type, nation, address, logoUrl, website, unirankUrl, email } = validated.data;
+
+    try {
+        const org = await prisma.organization.update({
+            where: { id },
+            data: { 
+                name, 
+                shortName, 
+                type, 
+                nation, 
+                address, 
+                logoUrl, 
+                website, 
+                unirankUrl,
+                email: email || null 
+            }
+        });
+        revalidatePath("/dashboard/organizations");
+        return { success: true, organization: org };
+    } catch(e: any) {
+        console.error("Update Org Error:", e);
+        return { error: "Failed to update organization." };
+    }
 }
 
 export async function deleteOrganization(id: string) {
@@ -94,26 +147,43 @@ export async function createDepartment(organizationId: string, name: string) {
     }
 }
 
-export async function searchOrganizations(query: string) {
-    if (!query || query.length < 2) return [];
+export async function searchOrganizations(query: string, page: number = 1, limit: number = 20) {
+    if (!query) return { data: [], total: 0 };
     
-    return await prisma.organization.findMany({
-        where: {
-            name: { contains: query, mode: 'insensitive' }
-        },
-        take: 10,
-        include: { departments: true }
-    });
+    // "Immediate" search: Target only name for speed
+    const where = {
+        name: { contains: query, mode: 'insensitive' as const }
+    };
+
+    const [total, data] = await prisma.$transaction([
+        prisma.organization.count({ where }),
+        prisma.organization.findMany({
+            where,
+            take: limit,
+            skip: (page - 1) * limit,
+            include: { departments: true },
+            orderBy: { name: 'asc' } // Ensure consistent order
+        })
+    ]);
+
+    return { data, total };
 }
 
-export async function getOrganizations(filters?: { type?: string; nation?: string }) {
+export async function getOrganizations(filters?: { type?: string; nation?: string }, page: number = 1, limit: number = 20) {
     const where: any = {};
     if (filters?.type && filters.type !== "ALL") where.type = filters.type;
     if (filters?.nation && filters.nation !== "ALL") where.nation = filters.nation;
 
-    return await prisma.organization.findMany({
-        where,
-        include: { departments: true, _count: { select: { affiliations: true } } },
-        orderBy: { name: 'asc' }
-    });
+    const [total, data] = await prisma.$transaction([
+        prisma.organization.count({ where }),
+        prisma.organization.findMany({
+            where,
+            take: limit,
+            skip: (page - 1) * limit,
+            include: { departments: true, _count: { select: { affiliations: true } } },
+            orderBy: { name: 'asc' }
+        })
+    ]);
+
+    return { data, total };
 }
