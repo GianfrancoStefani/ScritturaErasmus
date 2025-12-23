@@ -3,19 +3,24 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { ArrowRight, Wallet, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { WorksTable } from "@/components/works/WorksTable";
 
 export const dynamic = 'force-dynamic';
 
 export default async function WorksPage() {
   const projects = await prisma.project.findMany({
+    where: {
+        isTemplate: false
+    },
     include: {
-      works: true
+      works: true,
+      partners: true
     },
     orderBy: { updatedAt: 'desc' }
   });
 
-  const totalAllocated = projects.reduce((acc, p) => acc + p.works.reduce((wAcc, w) => wAcc + w.budget, 0), 0);
-  const totalWorks = projects.reduce((acc, p) => acc + p.works.length, 0);
+  const totalAllocated = projects.reduce((acc: number, p: any) => acc + p.works.reduce((wAcc: number, w: any) => wAcc + w.budget, 0), 0);
+  const totalWorks = projects.reduce((acc: number, p: any) => acc + p.works.length, 0);
 
   return (
     <div className="space-y-6">
@@ -50,56 +55,7 @@ export default async function WorksPage() {
         </div>
 
         {/* Projects Budget Table */}
-        <div className="card p-0 overflow-hidden">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                <h2 className="font-semibold text-slate-800">Budget Breakdown by Project</h2>
-            </div>
-            <div className="table-container border-0 shadow-none rounded-none">
-                <table className="table">
-                    <thead>
-                        <tr>
-                            <th>Project</th>
-                            <th>Acronym</th>
-                            <th className="text-center">Work Packages</th>
-                            <th className="text-right">Allocated Budget</th>
-                            <th className="text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {projects.map((project) => {
-                             const projectAllocated = project.works.reduce((acc, w) => acc + w.budget, 0);
-                             
-                             return (
-                                <tr key={project.id}>
-                                    <td className="font-medium">{project.title}</td>
-                                    <td>
-                                        <span className="px-2 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600">
-                                            {project.acronym}
-                                        </span>
-                                    </td>
-                                    <td className="text-center">{project.works.length}</td>
-                                    <td className="text-right font-mono text-slate-700">€{projectAllocated.toLocaleString()}</td>
-                                    <td className="text-right">
-                                        <Link href={`/dashboard/projects/${project.id}`}>
-                                            <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-                                                Manage <ArrowRight size={14} className="ml-1" />
-                                            </Button>
-                                        </Link>
-                                    </td>
-                                </tr>
-                             );
-                        })}
-                        {projects.length === 0 && (
-                            <tr>
-                                <td colSpan={5} className="text-center py-8 text-slate-400">
-                                    No projects found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <WorksTable projects={projects} />
     </div>
   );
 }

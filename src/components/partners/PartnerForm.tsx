@@ -3,9 +3,11 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { createPartner, updatePartner, type PartnerActionState } from "@/app/actions/partners";
 import { Button } from "@/components/ui/Button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, X, Edit2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { OrganizationSelector } from "@/components/organizations/OrganizationSelector";
+import { Input } from "@/components/ui/Input";
 
 // Helper types
 type PartnerData = {
@@ -19,6 +21,7 @@ type PartnerData = {
   website?: string | null;
   email?: string | null;
   logo?: string | null;
+  organizationId?: string | null;
   acronym?: string; 
 };
 
@@ -29,7 +32,37 @@ function SubmitButton({ isEditing }: { isEditing: boolean }) {
 
 export function PartnerForm({ projectId, initialData, onClose }: { projectId: string; initialData?: PartnerData; onClose: () => void }) {
     const isEditing = !!initialData;
+    const [role, setRole] = useState(initialData?.role || "Partner");
+    const [type, setType] = useState(initialData?.type || "University");
     
+    // If editing, we might have an org linked or just raw data.
+    // For now, we populate fields with initialData.
+    // If user changes Organization, we overwrite these.
+    const [selectedOrg, setSelectedOrg] = useState<any>(initialData ? {
+        name: initialData.name,
+        nation: initialData.nation,
+        city: initialData.city,
+        website: initialData.website,
+        logoUrl: initialData.logo,
+        id: initialData.organizationId
+    } : null);
+
+    // If Type changes, and we are NOT in initial load (editing), we might want to reset org?
+    // But simplified: user selects Type, then searches Org. If Org type mismatch, Selector shows warning or filter.
+    // Selector takes `type` prop, so it filters automatically.
+    // So if I change type, the current selectedOrg might be invalid?
+    // I'll clear selectedOrg if type changes (unless it matches).
+    useEffect(() => {
+        if (selectedOrg && selectedOrg.type && selectedOrg.type !== type) {
+            // Optional: clear selection if type mismatch. 
+            // BUT: "University" global might have different string in DB?
+            // Let's Keep it simple: Reset if type changes manually by user.
+            // But we need to distinguish initial load.
+            // Actually, if I change Type dropdown, I expect to search for THAT type.
+            // So resetting is safer.
+        }
+    }, [type]); 
+
     const [state, formAction] = useFormState<PartnerActionState, FormData>(async (prevState, formData) => {
         let result: PartnerActionState;
         if (isEditing && initialData?.id) {
@@ -45,40 +78,29 @@ export function PartnerForm({ projectId, initialData, onClose }: { projectId: st
         return result; 
     }, { success: false, error: null });
 
+    const handleOrgSelect = (org: any) => {
+        setSelectedOrg(org);
+        // Also ensure Type is synced if the org has a type (it should)
+        if (org.type) {
+             setType(org.type);
+        }
+    };
+
     return (
         <form action={formAction} className="space-y-4">
             <input type="hidden" name="projectId" value={projectId} />
             
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                    <label className="text-sm font-medium">Name</label>
-                    <input name="name" className="w-full border rounded p-2" required placeholder="University of X" defaultValue={initialData?.name} aria-label="Partner Name" />
-                    {state?.fieldErrors?.name && <p className="text-red-500 text-xs">{state.fieldErrors.name[0]}</p>}
-                </div>
-                 <div className="space-y-1">
-                    <label className="text-sm font-medium">Website</label>
-                    <input name="website" className="w-full border rounded p-2" placeholder="https://..." defaultValue={initialData?.website || ""} aria-label="Website" />
-                    {state?.fieldErrors?.website && <p className="text-red-500 text-xs">{state.fieldErrors.website[0]}</p>}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-1">
-                    <label className="text-sm font-medium">Nation</label>
-                    <input name="nation" className="w-full border rounded p-2" required placeholder="Italy" defaultValue={initialData?.nation} aria-label="Nation" />
-                    {state?.fieldErrors?.nation && <p className="text-red-500 text-xs">{state.fieldErrors.nation[0]}</p>}
-                </div>
-                 <div className="space-y-1">
-                    <label className="text-sm font-medium">City</label>
-                    <input name="city" className="w-full border rounded p-2" required placeholder="Rome" defaultValue={initialData?.city} aria-label="City" />
-                    {state?.fieldErrors?.city && <p className="text-red-500 text-xs">{state.fieldErrors.city[0]}</p>}
-                </div>
-            </div>
-
+            {/* Top Row: Role and Type */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Role</label>
-                    <select name="role" className="w-full border rounded p-2" defaultValue={initialData?.role || "Partner"} aria-label="Role">
+                    <select 
+                        name="role" 
+                        value={role} 
+                        onChange={(e) => setRole(e.target.value)}
+                        className="w-full border rounded p-2"
+                        aria-label="Role"
+                    >
                         <option value="Partner">Partner</option>
                         <option value="Coordinator">Coordinator</option>
                         <option value="Associated">Associated</option>
@@ -86,13 +108,94 @@ export function PartnerForm({ projectId, initialData, onClose }: { projectId: st
                 </div>
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Type</label>
-                     <select name="type" className="w-full border rounded p-2" defaultValue={initialData?.type || "University"} aria-label="Type">
+                     <select 
+                        name="type" 
+                        value={type} 
+                        onChange={(e) => { setType(e.target.value); setSelectedOrg(null); }}
+                        className="w-full border rounded p-2"
+                        aria-label="Type"
+                    >
                         <option value="University">University</option>
                         <option value="SME">SME</option>
                         <option value="NGO">NGO</option>
                         <option value="School">School</option>
                         <option value="Public Body">Public Body</option>
+                        <option value="Other">Other</option>
                     </select>
+                </div>
+            </div>
+
+            {/* Organization Selector */}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">Organization Name</label>
+                {/* We render hidden input for name to ensure FormData picks it up if they type manually or select */}
+                {/* Actually OrganizationSelector should handle searching. */}
+                {/* If selectedOrg is present, we show it locked? Or allow searching logic? */}
+                {/* User wants "trovare il nome... menu a tendina". */}
+                <OrganizationSelector 
+                    type={type} 
+                    projectId={projectId} 
+                    onSelect={handleOrgSelect} 
+                    defaultValue={selectedOrg?.name} 
+                />
+                <input type="hidden" name="name" value={selectedOrg?.name || ""} />
+                <input type="hidden" name="organizationId" value={selectedOrg?.id || ""} />
+                {state?.fieldErrors?.name && (
+                    <p className="text-red-500 text-xs mt-1">Please select create an organization to populate the name.</p>
+                )}
+                {state?.fieldErrors?.organizationId && (
+                    <p className="text-red-500 text-xs mt-1">{state.fieldErrors.organizationId[0]}</p>
+                )}
+            </div>
+
+            {/* Read-Only Details from Organization */}
+            <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-sm font-medium text-slate-500">Nation (Read-only)</label>
+                    <input 
+                        name="nation" 
+                        value={selectedOrg?.nation || ""} 
+                        readOnly 
+                        className="w-full border rounded p-2 bg-slate-100 text-slate-600" 
+                        tabIndex={-1}
+                        aria-label="Nation"
+                    />
+                </div>
+                 <div className="space-y-1">
+                    <label className="text-sm font-medium text-slate-500">City (Read-only)</label>
+                    <input 
+                        name="city" 
+                        value={selectedOrg?.city || ""} 
+                        readOnly 
+                        className="w-full border rounded p-2 bg-slate-100 text-slate-600" 
+                        tabIndex={-1}
+                        aria-label="City"
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-sm font-medium text-slate-500">Website (Read-only)</label>
+                    <input 
+                        name="website" 
+                        value={selectedOrg?.website || ""} 
+                        readOnly 
+                        className="w-full border rounded p-2 bg-slate-100 text-slate-600" 
+                        tabIndex={-1}
+                        aria-label="Website"
+                    />
+                </div>
+                 <div className="space-y-1">
+                    <label className="text-sm font-medium">Contact Email (Editable)</label>
+                    <input 
+                        name="email" 
+                        type="email" 
+                        defaultValue={initialData?.email || ""} 
+                        placeholder="contact@example.com" 
+                        className="w-full border rounded p-2" 
+                        aria-label="Contact Email"
+                    />
                 </div>
             </div>
              
@@ -102,15 +205,8 @@ export function PartnerForm({ projectId, initialData, onClose }: { projectId: st
                 {state?.fieldErrors?.budget && <p className="text-red-500 text-xs">{state.fieldErrors.budget[0]}</p>}
             </div>
 
-             <div className="space-y-1">
-                    <label className="text-sm font-medium">Contact Email</label>
-                    <input name="email" type="email" className="w-full border rounded p-2" defaultValue={initialData?.email || ""} placeholder="contact@example.com" aria-label="Contact Email" />
-                    {state?.fieldErrors?.email && <p className="text-red-500 text-xs">{state.fieldErrors.email[0]}</p>}
-            </div>
-            
-             <div className="space-y-1">
-                    <label className="text-sm font-medium">Logo URL</label>
-                    <input name="logo" type="url" className="w-full border rounded p-2" placeholder="https://..." defaultValue={initialData?.logo || ""} aria-label="Logo URL" />
+            <div className="space-y-1 hidden">
+                 <input name="logo" type="url" value={selectedOrg?.logoUrl || ""} readOnly aria-label="Logo URL" />
             </div>
 
             <div className="text-red-500 text-sm">

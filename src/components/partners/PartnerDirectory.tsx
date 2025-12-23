@@ -15,19 +15,69 @@ export function PartnerDirectory({ partners, projects }: { partners: any[], proj
     const [search, setSearch] = useState("");
     const [isAdding, setIsAdding] = useState(false);
     
+    const [activeTab, setActiveTab] = useState("ALL");
+    
     // Filtered
-    const filteredPartners = partners.filter(p => 
-        p.name.toLowerCase().includes(search.toLowerCase()) || 
-        p.project.acronym.toLowerCase().includes(search.toLowerCase()) || 
-        p.project.title.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredPartners = partners.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
+                              p.project.acronym.toLowerCase().includes(search.toLowerCase()) || 
+                              p.project.title.toLowerCase().includes(search.toLowerCase());
+        const matchesTab = activeTab === "ALL" || p.project.acronym === activeTab;
+        return matchesSearch && matchesTab;
+    });
+
+    // Extract unique projects from filters (or use passed projects prop for tabs)
+    // We use the passed `projects` prop to ensure we have tabs even if no partners exist for that project yet?
+    // Usually better to show tabs for projects that exist.
+    // Let's use the projects passed in props for the tabs.
 
     return (
         <div className="space-y-6">
+            {/* Project Tabs */}
+            <div className="border-b border-slate-200 overflow-x-auto">
+                <div className="flex gap-6 min-w-max px-2">
+                    <button
+                        onClick={() => setActiveTab("ALL")}
+                        className={`pb-3 text-sm font-medium transition-colors border-b-2 ${
+                            activeTab === "ALL" 
+                            ? "border-indigo-600 text-indigo-700" 
+                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                        }`}
+                    >
+                        All Partners
+                        <span className="ml-2 bg-slate-100 text-slate-600 py-0.5 px-1.5 rounded-full text-xs">
+                            {partners.length}
+                        </span>
+                    </button>
+                    {projects.map(proj => {
+                        // Count partners in this project
+                        const count = partners.filter(p => p.projectId === proj.id).length;
+                        return (
+                            <button
+                                key={proj.id}
+                                onClick={() => setActiveTab(proj.acronym)}
+                                className={`pb-3 text-sm font-medium transition-colors border-b-2 ${
+                                    activeTab === proj.acronym 
+                                    ? "border-indigo-600 text-indigo-700" 
+                                    : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                                }`}
+                            >
+                                {proj.acronym}
+                                <span className={`ml-2 py-0.5 px-1.5 rounded-full text-xs ${
+                                    activeTab === proj.acronym ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600"
+                                }`}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex-1 w-full md:w-auto relative">
                     <Input 
-                        placeholder="Search partners (Name, Project)..." 
+                        placeholder="Search partners (Name, City)..." 
                         value={search} 
                         onChange={e => setSearch(e.target.value)} 
                         className="pl-10"

@@ -25,6 +25,7 @@ model Project {
   members        ProjectMember[]
   invitations    Invitation[]
   namingProposals ProjectNameProposal[]
+  privateOrganizations Organization[]
   
   isTemplate     Boolean   @default(false)
   
@@ -76,6 +77,10 @@ model Work {
   
   order         Int       @default(0)
 
+
+  leadPartnerId String?
+  leadPartner   Partner?  @relation(fields: [leadPartnerId], references: [id])
+
   tasks         Task[]
   modules       Module[]
 
@@ -92,6 +97,10 @@ model Task {
   endDate       DateTime
   budget        Float
   
+
+  leadPartnerId String?
+  leadPartner   Partner?  @relation(fields: [leadPartnerId], references: [id])
+
   activities    Activity[]
   modules       Module[]
   assignments   Assignment[]
@@ -108,6 +117,10 @@ model Section {
   title         String
   order         Int       @default(0)
   
+
+  leadPartnerId String?
+  leadPartner   Partner?  @relation(fields: [leadPartnerId], references: [id])
+
   modules       Module[]
   works         Work[]
   
@@ -159,6 +172,10 @@ model Partner {
   leadingActivities Activity[] @relation("LeadingActivity")
   invitations    Invitation[]
   
+  leadingWorks    Work[]
+  leadingTasks    Task[]
+  leadingSections Section[]
+  
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
@@ -193,6 +210,7 @@ model User {
   memberships    ProjectMember[]
   affiliations   UserAffiliation[]
   availabilities UserAvailability[]
+  moduleMemberships ModuleMember[]
   
   namingProposals ProjectNameProposal[]
   namingVotes     ProjectNameVote[]
@@ -245,6 +263,13 @@ model Module {
   guidelines  String?  // Funding body instructions
   commentEndingDate DateTime?
   
+  // Workflow Tracking
+  authorizedBy String?
+  authorizedAt DateTime?
+  validatedBy  String?
+  validatedAt  DateTime?
+
+  members     ModuleMember[]
   components  TextComponent[]
   attachments Attachment[]
   versions    ModuleVersion[]
@@ -260,6 +285,22 @@ model ModuleVersion {
   module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   content   String   // The official text at this version
   createdAt DateTime @default(now())
+}
+
+model ModuleMember {
+  id        String   @id @default(cuid())
+  moduleId  String
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role      String   // SUPERVISOR, LEADER, EDITOR, VIEWER
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([moduleId, userId])
 }
 
 model TextComponent {
@@ -331,6 +372,7 @@ model Organization {
   shortName   String?  // Acronym
   type        String?  // University, NGO, Company, etc.
   nation      String?
+  city        String?
   address     String?
   logoUrl     String?
   website     String?
@@ -342,6 +384,10 @@ model Organization {
   oid         String? // Organisation ID
   pic         String? // Participant Identification Code
   favicon     String? 
+  
+  // Scope: Global (null) or Project-Specific
+  scopeProjectId String?
+  scopeProject   Project? @relation(fields: [scopeProjectId], references: [id], onDelete: Cascade)
   
   departments Department[]
   affiliations UserAffiliation[]

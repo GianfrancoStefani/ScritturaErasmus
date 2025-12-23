@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import nextDynamic from "next/dynamic";
 import { ContributionStream } from "@/components/editor/ContributionStream";
+import { ModuleStatusSelector } from "@/components/modules/ModuleStatusSelector";
+import { ModuleHeaderActions } from "@/components/modules/ModuleHeaderActions";
 import { User } from "@prisma/client";
 
 const AdvancedModuleEditor = nextDynamic(
@@ -55,6 +57,17 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
     const currentUserId = mockUser?.id || "unknown";
     const isManager = mockUser?.role === "Coordinator" || mockUser?.role === "Project Manager" || true; // Force true for demo
 
+    // Check user role in this module
+    const memberRecord = await prisma.moduleMember.findUnique({
+        where: {
+            moduleId_userId: {
+                moduleId: moduleData.id,
+                userId: currentUserId
+            }
+        }
+    });
+    const userRole = memberRecord?.role || null;
+
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)]">
              <div className="mb-4 flex-shrink-0 flex justify-between items-center">
@@ -72,7 +85,15 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
                         </span>
                     </h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
+                    <ModuleHeaderActions 
+                        moduleId={moduleData.id}
+                        currentStatus={moduleData.status || "TO_DO"}
+                        userRole={userRole}
+                        isManager={isManager}
+                        userId={currentUserId}
+                    />
+                    
                     {mockUser && (
                         <div className="text-xs text-slate-500 bg-amber-50 border border-amber-200 px-2 py-1 rounded">
                             Simulated User: <b>{mockUser.name} {mockUser.surname}</b> ({mockUser.role})
@@ -105,7 +126,7 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
                         <span className="font-semibold text-slate-700 flex items-center gap-2">
                             📄 Official Text
                         </span>
-                        {/* Auto-saving status is now handled inside AdvancedModuleEditor -> RichTextEditor */}
+                        {/* Status Selector moved to Header */}
                      </div>
                      <div className="flex-1 overflow-hidden bg-white flex flex-col">
                         {moduleData.guidelines && (

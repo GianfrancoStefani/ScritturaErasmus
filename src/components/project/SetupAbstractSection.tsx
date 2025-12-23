@@ -46,24 +46,31 @@ export function SetupAbstractSection({ projectId, abstractModule }: { projectId:
 
     return (
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-2">
-                <FileText size={18} className="text-slate-500" />
-                <h3 className="text-lg font-bold text-slate-800">Project Abstract</h3>
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2">
+                    <FileText size={18} className="text-slate-500" />
+                    <h3 className="text-lg font-bold text-slate-800">Project Abstract</h3>
+                </div>
+                {abstractModule && (
+                    <div className="flex items-center gap-2">
+                        <StatusBadge status={abstractModule.status || "TO_DO"} />
+                    </div>
+                )}
             </div>
             
             {abstractModule ? (
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col gap-4">
                     <div className="flex justify-between items-start">
-                        <div className="flex-1">
+                        <div className="flex-1 mr-4">
                             <p className="text-sm font-semibold text-slate-800 mb-1">Official Text</p>
                             
-                            {abstractModule.components && abstractModule.components.length > 0 ? (
-                                <div className="text-sm text-slate-600 bg-white p-3 rounded border border-slate-200 max-h-40 overflow-y-auto whitespace-pre-wrap mb-3">
-                                    {abstractModule.components[0].content || abstractModule.components[0].text || <span className="italic text-slate-400">Empty text...</span>}
-                                </div>
-                            ) : (
-                                <p className="text-xs text-slate-500 italic mb-3">No content yet.</p>
-                            )}
+                            <div className="text-sm text-slate-600 bg-white p-3 rounded border border-slate-200 max-h-[500px] overflow-y-auto whitespace-pre-wrap mb-3 prose prose-sm max-w-none">
+                                {abstractModule.officialText || abstractModule.components?.[0]?.content || abstractModule.components?.[0]?.text ? (
+                                    <div dangerouslySetInnerHTML={{ __html: abstractModule.officialText || abstractModule.components?.[0]?.content || abstractModule.components?.[0]?.text }} />
+                                ) : (
+                                    <span className="italic text-slate-400">Empty text...</span>
+                                )}
+                            </div>
 
                             <div className="flex items-center gap-4">
                                 <div>
@@ -108,4 +115,19 @@ export function SetupAbstractSection({ projectId, abstractModule }: { projectId:
             )}
         </div>
     );
+}
+
+function StatusBadge({ status }: { status: string }) {
+    const colors: Record<string, string> = {
+        'TO_DO': 'bg-slate-100 text-slate-600',
+        'TO_DONE': 'bg-slate-100 text-slate-600',
+        'UNDER_REVIEW': 'bg-yellow-100 text-yellow-700',
+        'DONE': 'bg-green-100 text-green-700',
+        'AUTHORIZED': 'bg-blue-100 text-blue-700'
+    };
+    return (
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex-shrink-0 whitespace-nowrap ${colors[status] || colors['TO_DO']}`}>
+            {status.replace('_', ' ')}
+        </span>
+    )
 }

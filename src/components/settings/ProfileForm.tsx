@@ -7,8 +7,10 @@ import { updateProfile } from "@/app/actions/settings";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { toast } from "sonner";
 import { User, Calendar, MapPin, Hash, ChevronDown, ChevronRight, Mail, Phone, Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function ProfileForm({ user }: { user: any }) {
+    const router = useRouter();
     const [data, setData] = useState({
         prefix: user.prefix || "",
         gender: user.gender || "",
@@ -18,6 +20,7 @@ export function ProfileForm({ user }: { user: any }) {
         // Existing fields
         name: user.name || "",
         surname: user.surname || "",
+        username: user.username || "",
         email: user.email || "",
         phone: user.phone || ""
     });
@@ -38,6 +41,7 @@ export function ProfileForm({ user }: { user: any }) {
             toast.error(res.error);
         } else {
             toast.success("Profile updated");
+            router.refresh();
         }
         setIsSaving(false);
     };
@@ -58,6 +62,7 @@ export function ProfileForm({ user }: { user: any }) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                      {/* Photo */}
                     <div className="md:col-span-1 flex flex-col items-center border-r border-slate-100 pr-4">
+                        {/* Debug: {data.photo} */}
                         <ImageUpload 
                             value={data.photo} 
                             onChange={(url) => setData({...data, photo: url})} 

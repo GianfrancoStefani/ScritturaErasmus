@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function CalendarPage() {
   const projects = await prisma.project.findMany({
+      where: { isTemplate: false },
       include: {
           works: true
       }

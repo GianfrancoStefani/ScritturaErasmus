@@ -5,6 +5,8 @@ import { Edit2, Save, X, ExternalLink, Building2 } from "lucide-react";
 import { updateProjectMembership } from "@/app/actions/settings";
 import Link from "next/link";
 import { toast } from "sonner";
+import { SelectionPopup } from "@/components/ui/SelectionPopup";
+import { PROFESSIONAL_ROLES } from "@/constants/roles";
 
 export function MyProjectsList({ memberships, userId, affiliations = [] }: { memberships: any[], userId: string, affiliations?: any[] }) {
     return (
@@ -35,6 +37,11 @@ function ProjectMembershipItem({ membership, userId, affiliations }: { membershi
         userAffiliationId: membership.userAffiliationId || "",
         organizationName: membership.organization?.name || "",
     });
+
+    const [isRolePopupOpen, setIsRolePopupOpen] = useState(false);
+    const roleOptions = Object.entries(PROFESSIONAL_ROLES).flatMap(([cat, roles]) => 
+        roles.map(r => ({ label: r, value: r }))
+    );
 
     const project = membership.project;
     
@@ -105,17 +112,42 @@ function ProjectMembershipItem({ membership, userId, affiliations }: { membershi
             {/* Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mt-2 pt-2 border-t border-slate-100">
                 <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Your Role</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Your Role (Multiple)</label>
                     {isEditing ? (
-                        <input 
-                            className="w-full border border-slate-200 rounded px-2 py-1 text-sm focus:border-indigo-500 outline-none"
-                            value={data.projectRole}
-                            onChange={(e) => setData({ ...data, projectRole: e.target.value })}
-                            placeholder="e.g. Researcher"
-                            aria-label="Project Role"
-                        />
+                        <>
+                            <div 
+                                className="w-full border border-slate-200 rounded px-2 py-1 text-sm bg-white min-h-[30px] flex flex-wrap gap-1 cursor-pointer items-center hover:border-indigo-300 transition-all"
+                                onClick={() => setIsRolePopupOpen(true)}
+                            >
+                                {((data.projectRole || '').split(',').filter(Boolean).length === 0) && <span className="text-slate-400 italic text-xs">Select roles (+)</span>}
+                                {(data.projectRole || '').split(',').filter(Boolean).map(r => (
+                                    <span key={r} className="bg-indigo-50 text-indigo-700 px-1 py-0.5 rounded text-[10px] border border-indigo-100">
+                                        {r.trim()}
+                                    </span>
+                                ))}
+                            </div>
+                            <SelectionPopup 
+                                isOpen={isRolePopupOpen}
+                                onClose={() => setIsRolePopupOpen(false)}
+                                title="Select Project Roles"
+                                options={roleOptions}
+                                selectedValues={(data.projectRole || '').split(',').map(r => r.trim()).filter(Boolean)}
+                                onConfirm={(newRoles) => setData({...data, projectRole: newRoles.join(', ')})}
+                                multiSelect={true}
+                            />
+                        </>
                     ) : (
-                        <p className="text-slate-700 font-medium">{data.projectRole || "Member"}</p>
+                        <div className="flex flex-wrap gap-1">
+                             {(data.projectRole || '').split(',').filter(Boolean).length > 0 ? (
+                                 (data.projectRole || '').split(',').filter(Boolean).map(r => (
+                                     <span key={r} className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-200">
+                                         {r.trim()}
+                                     </span>
+                                 ))
+                             ) : (
+                                 <span className="text-slate-400 italic">Member</span>
+                             )}
+                        </div>
                     )}
                 </div>
                 <div>

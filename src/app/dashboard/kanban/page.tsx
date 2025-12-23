@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 export default async function KanbanPage() {
     const [modules, projects] = await Promise.all([
         prisma.module.findMany({
+            where: {
+                project: { isTemplate: false }
+            },
             include: {
                 project: { select: { title: true, acronym: true, id: true } },
                 section: { select: { id: true, title: true } },
@@ -14,6 +17,7 @@ export default async function KanbanPage() {
             orderBy: { updatedAt: 'desc' }
         }),
         prisma.project.findMany({
+            where: { isTemplate: false },
             select: { id: true, title: true, acronym: true },
             orderBy: { updatedAt: 'desc' }
         })

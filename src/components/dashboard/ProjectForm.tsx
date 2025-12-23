@@ -1,7 +1,7 @@
 "use client";
 
 import { createProject } from "@/app/actions/createProject";
-import { updateProject } from "@/app/actions/updateProject";
+import { updateProjectMetadata } from "@/app/actions/updateProject";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useFormState, useFormStatus } from "react-dom";
@@ -41,7 +41,7 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
     
     const [state, formAction] = useFormState<ProjectFormState, FormData>(async (prevState, formData) => {
         if (isEdit && project) {
-            return await updateProject(project.id, prevState, formData);
+            return await updateProjectMetadata(project.id, formData);
         } else {
              // Create mode
              await createProject(formData);

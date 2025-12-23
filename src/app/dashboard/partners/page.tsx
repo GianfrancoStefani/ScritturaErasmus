@@ -20,6 +20,7 @@ export default async function PartnersPage() {
 
     // Fetch projects for the "Add Partner" modal
     const allProjects = await prisma.project.findMany({
+        where: { isTemplate: false },
         select: { id: true, title: true, acronym: true },
         orderBy: { createdAt: 'desc' }
     });

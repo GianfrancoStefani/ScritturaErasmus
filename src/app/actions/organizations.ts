@@ -7,14 +7,16 @@ import { auth } from "@/auth";
 
 const OrganizationSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  shortName: z.string().optional(),
-  type: z.string().optional(),
-  nation: z.string().optional(),
-  address: z.string().optional(),
+  shortName: z.string().optional().nullable(),
+  type: z.string().optional().nullable(),
+  nation: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
   logoUrl: z.string().optional().nullable(),
-  website: z.string().optional(),
-  unirankUrl: z.string().optional(),
+  website: z.string().optional().nullable(),
+  unirankUrl: z.string().optional().nullable(),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
+  scopeProjectId: z.string().optional().nullable(),
 });
 
 const DepartmentSchema = z.object({
@@ -30,11 +32,13 @@ export async function createOrganization(formData: FormData) {
      shortName: formData.get("shortName"),
      type: formData.get("type"),
      nation: formData.get("nation"),
+     city: formData.get("city"),
      address: formData.get("address"),
      logoUrl: formData.get("logoUrl"),
      website: formData.get("website"),
      unirankUrl: formData.get("unirankUrl"),
      email: formData.get("email"),
+     scopeProjectId: formData.get("scopeProjectId") || null,
   };
 
   const validated = OrganizationSchema.safeParse(rawData);
@@ -47,7 +51,7 @@ export async function createOrganization(formData: FormData) {
       return { error: "Invalid data: " + errorMsg };
   }
   
-  const { name, shortName, type, nation, address, logoUrl, website, unirankUrl, email } = validated.data;
+  const { name, shortName, type, nation, city, address, logoUrl, website, unirankUrl, email, scopeProjectId } = validated.data;
 
   try {
      const org = await prisma.organization.create({
@@ -56,11 +60,13 @@ export async function createOrganization(formData: FormData) {
              shortName, 
              type, 
              nation, 
+             city, 
              address, 
              logoUrl, 
              website, 
              unirankUrl,
-             email: email || null 
+             email: email || null,
+             scopeProjectId: scopeProjectId || null
          }
      });
      revalidatePath("/dashboard/organizations");
@@ -69,6 +75,35 @@ export async function createOrganization(formData: FormData) {
      console.error("Create Org Error:", e);
      return { error: "Failed to create organization. It might already exist." };
   }
+}
+
+// ... updateOrganization remains largely same unless we want to change scope (unlikely) ...
+
+export async function searchScopedOrganizations(query: string, type: string, projectId: string) {
+    if (!query) return { data: [], total: 0 };
+    
+    // Visibility Rule:
+    // If type == "University", search GLOBAL organizations (scopeProjectId: null)
+    // If type != "University", search PROJECT SPECIFIC organizations (scopeProjectId: projectId)
+    
+    const whereClause: any = {
+        name: { contains: query, mode: 'insensitive' as const },
+        type: { equals: type, mode: 'insensitive' as const } // Case-insensitive type match
+    };
+
+    if (type.toLowerCase() === "university") {
+        whereClause.scopeProjectId = null;
+    } else {
+        whereClause.scopeProjectId = projectId;
+    }
+
+    const data = await prisma.organization.findMany({
+        where: whereClause,
+        take: 20,
+        orderBy: { name: 'asc' }
+    });
+    
+    return { data };
 }
 
 export async function updateOrganization(id: string, formData: FormData) {
@@ -87,7 +122,7 @@ export async function updateOrganization(id: string, formData: FormData) {
         email: formData.get("email"),
     };
 
-    const validated = OrganizationSchema.safeParse(rawData);
+    const validated = OrganizationSchema.omit({ scopeProjectId: true }).safeParse(rawData);
 
     if (!validated.success) {
         return { error: "Invalid data: " + (validated.error as any).errors.map((e: any) => e.message).join(", ") };

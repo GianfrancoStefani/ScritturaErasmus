@@ -129,31 +129,38 @@ export function NamingChallenge({ projectId, userId }: { projectId: string; user
 
                                 return (
                                     <div key={p.id} className={`relative flex items-center gap-4 p-4 rounded-lg border ${index < 3 ? 'border-indigo-100 bg-indigo-50/50' : 'border-slate-100 bg-white'}`}>
-                                        {/* Rank Badge for top 3 */}
-                                        {index < 3 && (
-                                            <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-sm border border-white">
+
+                                        
+                                        {/* Rank Badge - Absolute Positioned on Avatar */}
+                                        <div className="relative flex-shrink-0 mr-4">
+                                            {p.user?.photo ? (
+                                                <img src={p.user.photo} alt={p.user.name || "User photo"} className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md" />
+                                            ) : (
+                                                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 border-2 border-white shadow-md">
+                                                    <User size={24} />
+                                                </div>
+                                            )}
+                                            
+                                            {/* Rank Indicator */}
+                                            <div className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm border-2 border-white ${
+                                                index === 0 ? "bg-yellow-400 text-white" :
+                                                index === 1 ? "bg-slate-300 text-white" :
+                                                index === 2 ? "bg-amber-600 text-white" :
+                                                "bg-slate-100 text-slate-500"
+                                            }`}>
                                                 {index + 1}
                                             </div>
-                                        )}
-                                        
-                                        <div className="w-8 flex justify-center flex-shrink-0">
-                                            {index >= 3 && <span className="font-mono text-slate-400 font-bold text-sm text-center w-full">#{index + 1}</span>}
                                         </div>
                                         
-                                        <div className="flex-1 min-w-0 px-2">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm flex-shrink-0 whitespace-nowrap uppercase tracking-wider">{p.acronym}</span>
-                                                <h4 className="font-bold text-slate-800 truncate text-sm">{p.title}</h4>
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">
-                                                <span className="flex items-center gap-1">
-                                                    {p.user?.photo ? (
-                                                        <img src={p.user.photo} alt={p.user.name || "User photo"} className="w-3 h-3 rounded-full object-cover" />
-                                                    ) : (
-                                                        <User size={10} />
-                                                    )}
-                                                    <span className="truncate">{p.user?.name} {p.user?.surname}</span>
-                                                </span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex flex-col justify-center h-full">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wide">{p.acronym}</span>
+                                                </div>
+                                                <h4 className="font-bold text-slate-800 text-base leading-tight mb-0.5">{p.title}</h4>
+                                                <div className="text-xs text-slate-500 font-medium">
+                                                    by {p.user?.name} {p.user?.surname}
+                                                </div>
                                             </div>
                                         </div>
 

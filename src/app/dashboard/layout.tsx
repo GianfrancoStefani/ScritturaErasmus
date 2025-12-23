@@ -10,7 +10,10 @@ async function getUserProjects() {
    // Fetch lightweight project list for navigation
    // Using memberships relation
    const memberships = await prisma.projectMember.findMany({
-       where: { userId: session.user.id },
+       where: { 
+           userId: session.user.id,
+           project: { isTemplate: false }
+       },
        include: { 
            project: {
                select: { id: true, acronym: true, title: true }
@@ -18,7 +21,7 @@ async function getUserProjects() {
        }
    });
 
-   return memberships.map(m => m.project);
+   return memberships.map(m => m.project).filter((p): p is NonNullable<typeof m.project> => p !== null);
 }
 
 export default async function DashboardLayout({

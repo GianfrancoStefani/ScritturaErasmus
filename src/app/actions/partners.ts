@@ -17,6 +17,7 @@ const PartnerSchema = z.object({
   contactName: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   logo: z.string().optional(),
+  organizationId: z.string().optional().nullable(),
 });
 
 const UserSchema = z.object({
@@ -53,6 +54,7 @@ export async function createPartner(formData: FormData): Promise<PartnerActionSt
     contactName: formData.get("contactName") || undefined,
     email: formData.get("email") || undefined,
     logo: formData.get("logo") || undefined,
+    organizationId: formData.get("organizationId") || null,
   };
 
   const validation = PartnerSchema.safeParse(rawData);
@@ -61,12 +63,13 @@ export async function createPartner(formData: FormData): Promise<PartnerActionSt
     return { fieldErrors: validation.error.flatten().fieldErrors };
   }
 
-  const { projectId, ...data } = validation.data;
+  const { projectId, organizationId, ...data } = validation.data;
 
   try {
-    await prisma.partner.create({
+    const partner = await prisma.partner.create({
       data: {
         ...data,
+        organization: organizationId ? { connect: { id: organizationId } } : undefined,
         project: { connect: { id: projectId } },
       },
     });
@@ -91,6 +94,7 @@ export async function updatePartner(partnerId: string, projectId: string, formDa
         contactName: formData.get("contactName") || undefined,
         email: formData.get("email") || undefined,
         logo: formData.get("logo") || undefined,
+        organizationId: formData.get("organizationId") || null,
     };
 
     const validation = PartnerSchema.safeParse(rawData);
@@ -99,12 +103,17 @@ export async function updatePartner(partnerId: string, projectId: string, formDa
         return { fieldErrors: validation.error.flatten().fieldErrors };
     }
 
-    const { projectId: _, ...data } = validation.data;
+    const { projectId: _, organizationId, ...data } = validation.data;
 
     try {
         await prisma.partner.update({
             where: { id: partnerId },
-            data: data
+            data: {
+                ...data,
+                organization: organizationId 
+                    ? { connect: { id: organizationId } } 
+                    : { disconnect: true }
+            }
         });
         revalidatePath(`/dashboard/projects/${projectId}/partners`);
         return { success: true };

@@ -12,6 +12,7 @@ async function getProjects() {
 
   const projects = await prisma.project.findMany({
     where: {
+        isTemplate: false,
         members: {
             some: {
                 userId: session.user.id

@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProjectsPage() {
   const projects = await prisma.project.findMany({
+    where: { isTemplate: false },
     orderBy: { updatedAt: 'desc' },
     include: {
       _count: {

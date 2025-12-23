@@ -111,8 +111,12 @@ export default async function PartnerDetailsPage({ params }: { params: { id: str
                                 <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                                {member.user.name[0]}
+                                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 text-xs font-bold text-slate-600">
+                                                {member.user.photo ? (
+                                                    <img src={member.user.photo} alt={member.user.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    member.user.name[0]
+                                                )}
                                             </div>
                                             <div>
                                                 <p className="font-medium text-slate-900">{member.user.name} {member.user.surname}</p>

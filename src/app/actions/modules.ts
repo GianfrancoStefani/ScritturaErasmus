@@ -96,25 +96,27 @@ export async function createModule(prevState: any, formData: FormData): Promise<
 
 const UpdateModuleSchema = z.object({
     id: z.string(),
-    title: z.string().min(1),
+    title: z.string().min(1).optional(),
     subtitle: z.string().optional(),
     maxChars: z.coerce.number().optional(),
     guidelines: z.string().optional(),
     maxSelections: z.coerce.number().optional(),
     completion: z.coerce.number().min(0).max(100).optional(),
     commentEndingDate: z.string().optional(),
+    status: z.enum(['TO_DO', 'TO_DONE', 'UNDER_REVIEW', 'DONE', 'AUTHORIZED']).optional(),
 });
 
 export async function updateModuleMetadata(prevState: any, formData: FormData): Promise<ModuleActionState> {
     const rawData = {
         id: formData.get("id"),
-        title: formData.get("title"),
+        title: formData.get("title") || undefined,
         subtitle: formData.get("subtitle") || undefined,
         maxChars: formData.get("maxChars") || undefined,
         guidelines: formData.get("guidelines") || undefined,
         maxSelections: formData.get("maxSelections") || undefined,
         completion: formData.get("completion") || undefined,
         commentEndingDate: formData.get("commentEndingDate") || undefined,
+        status: formData.get("status") || undefined,
     };
 
     const validated = UpdateModuleSchema.safeParse(rawData);
@@ -131,6 +133,7 @@ export async function updateModuleMetadata(prevState: any, formData: FormData): 
                 maxSelections: validated.data.maxSelections ? Number(validated.data.maxSelections) : undefined,
                 completion: validated.data.completion !== undefined ? Number(validated.data.completion) : undefined,
                 commentEndingDate: validated.data.commentEndingDate ? new Date(validated.data.commentEndingDate) : null,
+                status: validated.data.status,
             }
         });
         revalidatePath("/dashboard/projects/[id]", 'page'); 

@@ -8,6 +8,8 @@ import { createUserAffiliation, deleteUserAffiliation, updateUserAffiliation } f
 import { Building2, Plus, Trash2, Edit2, Phone, Mail, User, Briefcase, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { PROFESSIONAL_ROLES } from "@/constants/roles";
+import { SelectionPopup } from "@/components/ui/SelectionPopup";
+import { useRouter } from "next/navigation";
 
 export function AffiliationManager({ affiliations }: { affiliations: any[] }) {
     const [isCreating, setIsCreating] = useState(false);
@@ -40,19 +42,26 @@ export function AffiliationManager({ affiliations }: { affiliations: any[] }) {
 }
 
 function AffiliationForm({ onClose, initialData }: { onClose: () => void, initialData?: any }) {
+    const router = useRouter();
     const [orgSearch, setOrgSearch] = useState("");
     const [orgResults, setOrgResults] = useState<any[]>([]);
+    const [isRolePopupOpen, setIsRolePopupOpen] = useState(false);
     
     // Form State
+    // Parse role string "Role1, Role2" into array for multi-select
     const [data, setData] = useState({
         organizationId: initialData?.organizationId || "",
         organizationName: initialData?.organization?.name || "",
         departmentName: initialData?.departmentName || "",
-        role: initialData?.role || "",
+        role: initialData?.role ? (initialData.role as string).split(',').map(r => r.trim()).filter(Boolean) : [] as string[],
         contactPerson: initialData?.contactPerson || "",
         phone: initialData?.phone || "",
         email: initialData?.email || ""
     });
+
+    const roleOptions = Object.entries(PROFESSIONAL_ROLES).flatMap(([cat, roles]) => 
+        roles.map(r => ({ label: r, value: r }))
+    );
 
     // Debounced Search
     useEffect(() => {
@@ -77,7 +86,8 @@ function AffiliationForm({ onClose, initialData }: { onClose: () => void, initia
         const formData = new FormData();
         formData.append("organizationId", data.organizationId);
         formData.append("departmentName", data.departmentName);
-        formData.append("role", data.role);
+        // Join array back to CSV string
+        formData.append("role", data.role.join(", "));
         formData.append("contactPerson", data.contactPerson);
         formData.append("phone", data.phone);
         formData.append("email", data.email);
@@ -93,6 +103,7 @@ function AffiliationForm({ onClose, initialData }: { onClose: () => void, initia
             toast.error(typeof res.error === 'string' ? res.error : "Failed to save");
         } else {
             toast.success("Affiliation Card Saved");
+            router.refresh();
             onClose();
         }
     };
@@ -189,27 +200,29 @@ function AffiliationForm({ onClose, initialData }: { onClose: () => void, initia
                     />
                 </div>
                 <div>
-                    <label className="text-xs font-semibold text-slate-500 mb-1 block">My Role</label>
-                    <div className="relative">
-// ... inside component ...
-
-                        <select 
-                            value={data.role} 
-                            onChange={e => setData({...data, role: e.target.value})}
-                            className="w-full border border-slate-200 rounded px-2 py-2 text-sm bg-white focus:border-indigo-500 outline-none appearance-none"
-                            aria-label="Role"
-                        >
-                            <option value="">Select Role...</option>
-                            {Object.entries(PROFESSIONAL_ROLES).map(([category, roles]) => (
-                                <optgroup key={category} label={category}>
-                                    {roles.map(role => (
-                                        <option key={role} value={role}>{role}</option>
-                                    ))}
-                                </optgroup>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Your Role (Multiple)</label>
+                    <div 
+                        className="w-full border border-slate-200 rounded px-2 py-2 text-sm bg-white min-h-[38px] flex flex-wrap gap-1 cursor-pointer items-center hover:border-indigo-300 transition-all"
+                        onClick={() => setIsRolePopupOpen(true)}
+                    >
+                        {data.role.length === 0 && <span className="text-slate-400 italic">Click to select roles (+)</span>}
+                        {data.role.map(r => (
+                            <span key={r} className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-xs border border-indigo-100">
+                                {r}
+                            </span>
+                        ))}
+                         <ChevronDown className="ml-auto text-slate-300 shrink-0" size={14}/>
                     </div>
+
+                    <SelectionPopup 
+                        isOpen={isRolePopupOpen}
+                        onClose={() => setIsRolePopupOpen(false)}
+                        title="Select Roles"
+                        options={roleOptions}
+                        selectedValues={data.role}
+                        onConfirm={(newRoles) => setData({...data, role: newRoles})}
+                        multiSelect={true}
+                    />
                 </div>
                 
                 <div className="col-span-2 grid grid-cols-3 gap-4 border-t border-slate-200 pt-3 mt-1">
@@ -298,9 +311,15 @@ function AffiliationCard({ affiliation }: { affiliation: any }) {
                      </div>
                 )}
                 {affiliation.role && (
-                     <div className="flex items-center gap-2">
-                         <User size={14} className="text-slate-400" />
-                         <span>{affiliation.role}</span>
+                     <div className="flex items-start gap-2">
+                         <User size={14} className="text-slate-400 mt-0.5" />
+                         <div className="flex flex-wrap gap-1">
+                            {(affiliation.role as string).split(',').map(r => r.trim()).filter(Boolean).map(r => (
+                                <span key={r} className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-200">
+                                    {r}
+                                </span>
+                            ))}
+                         </div>
                      </div>
                 )}
                 

@@ -11,13 +11,22 @@ const ProfileSchema = z.object({
   surname: z.string().min(1, "Surname is required"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email"),
-  motherTongue: z.string().optional(),
+  motherTongue: z.string().optional().nullable(),
   
-  prefix: z.string().optional(),
-  gender: z.string().optional(),
-  birthPlace: z.string().optional(),
+  prefix: z.string().optional().nullable(),
+  gender: z.string().optional().nullable(),
+  birthPlace: z.string().optional().nullable(),
   birthDate: z.string().optional().nullable(), // Receive as string from form
   photo: z.string().optional().nullable(),
+});
+
+const PasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Confirm password is required"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 export async function updateProfile(userId: string, formData: FormData) {
@@ -38,6 +47,8 @@ export async function updateProfile(userId: string, formData: FormData) {
     birthDate: formData.get("birthDate"), // "YYYY-MM-DD"
     photo: formData.get("photo"),
   };
+  
+  console.log("updateProfile rawData:", rawData);
 
   const validatedFields = ProfileSchema.safeParse(rawData);
 
