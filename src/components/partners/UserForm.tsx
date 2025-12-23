@@ -51,7 +51,7 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
             <div className="grid grid-cols-3 gap-4">
                  <div className="space-y-1 col-span-1">
                     <label className="text-sm font-medium">Prefix</label>
-                    <select name="prefix" className="w-full border rounded p-2" defaultValue={initialData?.prefix || "Mr."}>
+                    <select name="prefix" className="w-full border rounded p-2" defaultValue={initialData?.prefix || "Mr."} aria-label="Prefix">
                         <option value="Mr.">Mr.</option>
                         <option value="Ms.">Ms.</option>
                         <option value="Mrs.">Mrs.</option>
@@ -61,12 +61,12 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
                 </div>
                 <div className="space-y-1 col-span-1">
                     <label className="text-sm font-medium">Name</label>
-                    <input name="name" className="w-full border rounded p-2" required defaultValue={initialData?.name} />
+                    <input name="name" className="w-full border rounded p-2" required defaultValue={initialData?.name} placeholder="John" aria-label="Name" />
                     {state?.fieldErrors?.name && <p className="text-red-500 text-xs">{state.fieldErrors.name[0]}</p>}
                 </div>
                 <div className="space-y-1 col-span-1">
                     <label className="text-sm font-medium">Surname</label>
-                    <input name="surname" className="w-full border rounded p-2" required defaultValue={initialData?.surname} />
+                    <input name="surname" className="w-full border rounded p-2" required defaultValue={initialData?.surname} placeholder="Doe" aria-label="Surname" />
                     {state?.fieldErrors?.surname && <p className="text-red-500 text-xs">{state.fieldErrors.surname[0]}</p>}
                 </div>
             </div>
@@ -74,12 +74,12 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
             <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-1">
                     <label className="text-sm font-medium">Email</label>
-                    <input name="email" type="email" className="w-full border rounded p-2" required defaultValue={initialData?.email} />
+                    <input name="email" type="email" className="w-full border rounded p-2" required defaultValue={initialData?.email} placeholder="john.doe@example.com" aria-label="Email" />
                     {state?.fieldErrors?.email && <p className="text-red-500 text-xs">{state.fieldErrors.email[0]}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Role</label>
-                    <select name="role" className="w-full border rounded p-2" defaultValue={initialData?.role || "Researcher"}>
+                    <select name="role" className="w-full border rounded p-2" defaultValue={initialData?.role || "Researcher"} aria-label="Role">
                         <option value="Project Manager">Project Manager</option>
                         <option value="Researcher">Researcher</option>
                         <option value="Financial Officer">Financial Officer</option>
@@ -92,29 +92,29 @@ export function UserForm({ partnerId, initialData, onClose }: { partnerId: strin
             <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-1">
                     <label className="text-sm font-medium">Phone (Mobile)</label>
-                    <input name="phone" className="w-full border rounded p-2" defaultValue={initialData?.phone || ""} />
+                    <input name="phone" className="w-full border rounded p-2" defaultValue={initialData?.phone || ""} placeholder="+39 333 1234567" aria-label="Phone" />
                 </div>
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Landline</label>
-                    <input name="landline" className="w-full border rounded p-2" defaultValue={initialData?.landline || ""} />
+                    <input name="landline" className="w-full border rounded p-2" defaultValue={initialData?.landline || ""} placeholder="+39 02 1234567" aria-label="Landline" />
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Username</label>
-                    <input name="username" className="w-full border rounded p-2" required defaultValue={initialData?.username} />
+                    <input name="username" className="w-full border rounded p-2" required defaultValue={initialData?.username} placeholder="jdoe" aria-label="Username" />
                     {state?.fieldErrors?.username && <p className="text-red-500 text-xs">{state.fieldErrors.username[0]}</p>}
                 </div>
                  <div className="space-y-1">
                     <label className="text-sm font-medium">Photo URL</label>
-                    <input name="photo" className="w-full border rounded p-2" defaultValue={initialData?.photo || ""} />
+                    <input name="photo" className="w-full border rounded p-2" defaultValue={initialData?.photo || ""} placeholder="https://..." aria-label="Photo URL" />
                 </div>
             </div>
 
              <div className="space-y-1">
                 <label className="text-sm font-medium">Password {isEditing && "(Leave blank to keep current)"}</label>
-                <input name="password" type="password" className="w-full border rounded p-2" required={!isEditing} minLength={6} />
+                <input name="password" type="password" className="w-full border rounded p-2" required={!isEditing} minLength={6} placeholder="******" aria-label="Password" />
                 {state?.fieldErrors?.password && <p className="text-red-500 text-xs">{state.fieldErrors.password[0]}</p>}
             </div>
 
@@ -152,6 +152,7 @@ export function EditUserButton({ partnerId, user }: { partnerId: string; user: U
             <button 
                  onClick={(e) => { e.stopPropagation(); setOpen(true); }}
                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 p-1 mr-1"
+                 title="Edit User"
             >
                 <Edit2 size={14} />
             </button>

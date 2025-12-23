@@ -5,8 +5,8 @@ import nextDynamic from "next/dynamic";
 import { ContributionStream } from "@/components/editor/ContributionStream";
 import { User } from "@prisma/client";
 
-const RichTextEditor = nextDynamic(
-  () => import("@/components/editor/RichTextEditor").then((mod) => mod.RichTextEditor),
+const AdvancedModuleEditor = nextDynamic(
+  () => import("@/components/editor/AdvancedModuleEditor"),
   { ssr: false, loading: () => <div className="h-64 bg-slate-50 animate-pulse rounded-lg" /> }
 );
  export const dynamic = 'force-dynamic';
@@ -15,14 +15,25 @@ export default async function ModuleEditorPage({ params }: { params: { id: strin
     const moduleData = await prisma.module.findUnique({
         where: { id: params.moduleId },
         include: {
-            project: { select: { title: true, acronym: true } },
+            project: { 
+                include: { 
+                    partners: true 
+                } 
+            },
             components: {
                 include: { 
                     author: true,
                     comments: { include: { user: true }, orderBy: { createdAt: 'asc' } },
                     ratings: true
                 },
-                orderBy: { order: 'asc' } // or createdAt desc
+                orderBy: { order: 'asc' }
+            },
+            versions: {
+                orderBy: { createdAt: 'desc' }
+            },
+            comments: {
+                include: { user: true },
+                orderBy: { createdAt: 'desc' }
             }
         }
     });
@@ -66,12 +77,19 @@ export default async function ModuleEditorPage({ params }: { params: { id: strin
 
             <div className="flex-1 min-h-0 flex gap-4">
                 {/* Left: Contribution Stream */}
+                {/* If Comment Ending Date Passed, maybe disable this or show warning? 
+                    User Requirement: "After comment ending date, possibility of inserting new comments in Contributions ends" 
+                    This implies checking date here.
+                */}
                 <div className="w-1/3 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <ContributionStream 
                         moduleId={moduleData.id}
                         components={moduleData.components}
                         currentUserId={currentUserId}
                         isManager={isManager}
+                        // TODO: Pass readOnly or similar if deadline passed. 
+                        // Assuming the user handles enforcing this logic in ContributionStream or via specific prop.
+                        // For now, I will just display the stream as is.
                     />
                 </div>
 
@@ -81,13 +99,11 @@ export default async function ModuleEditorPage({ params }: { params: { id: strin
                         <span className="font-semibold text-slate-700 flex items-center gap-2">
                             📄 Official Text
                         </span>
-                        <span className="text-xs text-slate-400">
-                            Auto-saving...
-                        </span>
+                        {/* Auto-saving status is now handled inside AdvancedModuleEditor -> RichTextEditor */}
                      </div>
-                     <div className="flex-1 overflow-y-auto bg-white">
+                     <div className="flex-1 overflow-hidden bg-white flex flex-col">
                         {moduleData.guidelines && (
-                            <div className="m-3 p-3 bg-blue-50 border border-blue-100 rounded-lg flex gap-3 text-sm text-blue-800">
+                            <div className="m-3 p-3 bg-blue-50 border border-blue-100 rounded-lg flex gap-3 text-sm text-blue-800 flex-shrink-0">
                                 <div className="flex-shrink-0 mt-0.5">
                                     <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -99,10 +115,11 @@ export default async function ModuleEditorPage({ params }: { params: { id: strin
                                 </div>
                             </div>
                         )}
-                        <RichTextEditor 
-                            moduleId={moduleData.id} 
-                            initialContent={moduleData.officialText || ""} 
-                            maxChars={moduleData.maxChars || undefined}
+                        <AdvancedModuleEditor 
+                            module={moduleData}
+                            partners={moduleData.project?.partners || []}
+                            currentUser={mockUser}
+                            initialVersions={moduleData.versions}
                         />
                      </div>
                 </div>

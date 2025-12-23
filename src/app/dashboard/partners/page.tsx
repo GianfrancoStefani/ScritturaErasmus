@@ -24,12 +24,11 @@ export default async function PartnersPage() {
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                         <Users className="text-indigo-600" /> Partners Directory
                     </h1>
-                    <p className="text-slate-500">Global list of all partners across all projects.</p>
+                    <p className="text-slate-500 mt-1 max-w-2xl">
+                        This is the global registry of all partners associated with any project. 
+                        To manage partners (add/edit) for a specific project, please navigate to that project's dashboard or use the "Project" link on a partner card.
+                    </p>
                 </div>
-                {/* 
-                  Global Create is tricky because Partner needs a ProjectId. 
-                  So we just list them here. To create, go to a Project.
-                */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -48,7 +47,9 @@ export default async function PartnersPage() {
                              </span>
                         </div>
                         
-                        <h3 className="text-lg font-bold text-slate-900 mb-1">{partner.name}</h3>
+                        <Link href={`/dashboard/partners/${partner.id}`} className="hover:text-indigo-600 transition-colors">
+                            <h3 className="text-lg font-bold text-slate-900 mb-1">{partner.name}</h3>
+                        </Link>
                         <p className="text-sm text-slate-500 mb-4 flex items-center gap-1">
                             {partner.city}, {partner.nation}
                         </p>
@@ -67,6 +68,11 @@ export default async function PartnersPage() {
                                     <Users size={14} /> Team
                                 </span>
                                 <span className="font-medium text-slate-900">{partner._count.users} Users</span>
+                             </div>
+                             <div className="pt-2">
+                                <Link href={`/dashboard/partners/${partner.id}`} className="block w-full text-center bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-medium py-2 rounded-lg transition-colors">
+                                    View Organization Structure
+                                </Link>
                              </div>
                         </div>
                     </div>

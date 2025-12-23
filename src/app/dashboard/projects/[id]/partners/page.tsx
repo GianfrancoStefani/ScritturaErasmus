@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { PartnerTree } from "@/components/partners/PartnerTree";
 import { CreatePartnerButton } from "@/components/partners/PartnerForm";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
@@ -29,9 +29,14 @@ export default async function PartnersPage({ params }: { params: { id: string } 
                 <main className="flex-1 p-8 overflow-y-auto">
                      <div className="max-w-4xl mx-auto space-y-8">
                          <div className="flex flex-col gap-4">
-                            <Link href={`/dashboard/projects/${project.id}`} className="text-sm text-slate-500 hover:text-indigo-600 flex items-center gap-2 w-fit">
-                                <ArrowLeft size={16} /> Back to Project
-                            </Link>
+                            <div className="flex items-center justify-between">
+                                <Link href={`/dashboard/projects/${project.id}`} className="text-sm text-slate-500 hover:text-indigo-600 flex items-center gap-2 w-fit">
+                                    <ArrowLeft size={16} /> Back to Project
+                                </Link>
+                                <Link href="/dashboard/partners" className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-2">
+                                    <Users size={16} /> Global Partner Directory
+                                </Link>
+                            </div>
 
                             <div className="flex justify-between items-center">
                                 <div>

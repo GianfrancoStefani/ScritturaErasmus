@@ -1,0 +1,202 @@
+"use client";
+
+import { useState } from "react";
+import { Edit2, Save, X, ExternalLink, Building2 } from "lucide-react";
+import { updateProjectMembership } from "@/app/actions/settings";
+import Link from "next/link";
+import { toast } from "sonner";
+
+export function MyProjectsList({ memberships, userId, affiliations = [] }: { memberships: any[], userId: string, affiliations?: any[] }) {
+    return (
+        <div className="space-y-4">
+             {memberships.length === 0 ? (
+                 <p className="text-slate-500 italic">You are not part of any projects yet.</p>
+             ) : (
+                 <div className="grid gap-4">
+                     {memberships.map(m => (
+                         <ProjectMembershipItem key={m.projectId} membership={m} userId={userId} affiliations={affiliations} />
+                     ))}
+                 </div>
+             )}
+        </div>
+    );
+}
+
+function ProjectMembershipItem({ membership, userId, affiliations }: { membership: any, userId: string, affiliations: any[] }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [data, setData] = useState({
+        participationMode: membership.participationMode || "",
+        projectRole: membership.projectRole || "",
+        customDailyRate: membership.customDailyRate || 0,
+        // Legacy or Linked
+        organizationId: membership.organizationId || "",
+        userAffiliationId: membership.userAffiliationId || "",
+        organizationName: membership.organization?.name || "",
+    });
+
+    const project = membership.project;
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        const formData = new FormData();
+        formData.append("projectId", project.id);
+        formData.append("participationMode", data.participationMode);
+        formData.append("projectRole", data.projectRole);
+        formData.append("customDailyRate", data.customDailyRate.toString());
+        formData.append("organizationId", data.organizationId);
+        formData.append("userAffiliationId", data.userAffiliationId);
+
+        const res = await updateProjectMembership(userId, formData);
+        setIsSaving(false);
+        if (res.error) {
+            toast.error(typeof res.error === 'string' ? res.error : "Failed to update");
+        } else {
+            toast.success("Updated successfully");
+            setIsEditing(false);
+        }
+    };
+
+    const isOrgRelevant = ["ENTITY", "NGO"].includes(data.participationMode);
+
+    // Helper: Find selected affiliation to display name
+    const selectedAffiliation = affiliations.find(a => a.id === data.userAffiliationId);
+    
+    // Display Name Logic
+    let orgDisplayName = data.organizationName;
+    if (selectedAffiliation) {
+        orgDisplayName = selectedAffiliation.organization.name + (selectedAffiliation.departmentName ? ` - ${selectedAffiliation.departmentName}` : "");
+    }
+
+    return (
+        <div className="bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-bold">{project.acronym}</span>
+                        <h3 className="font-bold text-slate-800">{project.title}</h3>
+                        <Link href={`/dashboard/projects/${project.id}`} className="text-slate-400 hover:text-indigo-600">
+                            <ExternalLink size={14} />
+                        </Link>
+                    </div>
+                    <p className="text-xs text-slate-500">{project.role} • {project.status || 'Active'}</p>
+                </div>
+                <div>
+                     {!isEditing ? (
+                         <button onClick={() => setIsEditing(true)} className="text-slate-400 hover:text-indigo-600 p-1" aria-label="Edit Membership">
+                             <Edit2 size={16} />
+                         </button>
+                     ) : (
+                         <div className="flex gap-1">
+                             <button onClick={() => setIsEditing(false)} className="text-slate-400 hover:text-red-500 p-1" aria-label="Cancel Edit"><X size={16} /></button>
+                             <button onClick={handleSave} disabled={isSaving} className="text-indigo-600 hover:text-indigo-800 p-1" aria-label="Save Changes">
+                                 {isSaving ? "..." : <Save size={16} />}
+                             </button>
+                         </div>
+                     )}
+                </div>
+            </div>
+
+            {/* Details Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mt-2 pt-2 border-t border-slate-100">
+                <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Your Role</label>
+                    {isEditing ? (
+                        <input 
+                            className="w-full border border-slate-200 rounded px-2 py-1 text-sm focus:border-indigo-500 outline-none"
+                            value={data.projectRole}
+                            onChange={(e) => setData({ ...data, projectRole: e.target.value })}
+                            placeholder="e.g. Researcher"
+                            aria-label="Project Role"
+                        />
+                    ) : (
+                        <p className="text-slate-700 font-medium">{data.projectRole || "Member"}</p>
+                    )}
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Participation</label>
+                    {isEditing ? (
+                        <select 
+                            className="w-full border border-slate-200 rounded px-2 py-1 text-sm bg-white focus:border-indigo-500 outline-none"
+                            value={data.participationMode}
+                            onChange={(e) => setData({ ...data, participationMode: e.target.value })}
+                            aria-label="Participation Mode"
+                        >
+                            <option value="">Select...</option>
+                            <option value="ENTITY">Partner Staff</option>
+                            <option value="NGO">NGO Rep.</option>
+                            <option value="INDEPENDENT">Freelancer</option>
+                        </select>
+                    ) : (
+                        <p className="text-slate-700 font-medium capitalize">{data.participationMode?.toLowerCase() || "-"}</p>
+                    )}
+                </div>
+                
+                {/* Organization Selector (Using Cards) */}
+                <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Affiliation / Organization</label>
+                    {isEditing ? (
+                         isOrgRelevant ? (
+                             affiliations.length > 0 ? (
+                                <select 
+                                    className="w-full border border-slate-200 rounded px-2 py-1 text-sm bg-white focus:border-indigo-500 outline-none"
+                                    value={data.userAffiliationId}
+                                    onChange={(e) => {
+                                        const affId = e.target.value;
+                                        const aff = affiliations.find(a => a.id === affId);
+                                        setData({
+                                            ...data, 
+                                            userAffiliationId: affId, 
+                                            organizationId: aff ? aff.organizationId : "",
+                                            organizationName: aff ? aff.organization.name : ""
+                                        }); 
+                                    }}
+                                    aria-label="Select Affiliation Card"
+                                >
+                                    <option value="">Select Card...</option>
+                                    {affiliations.map(aff => (
+                                        <option key={aff.id} value={aff.id}>
+                                            {aff.organization.name} {aff.departmentName ? `(${aff.departmentName})` : ""}
+                                        </option>
+                                    ))}
+                                </select>
+                             ) : (
+                                 <p className="text-red-500 text-xs italic">
+                                     No cards found. <a href="#" onClick={(e) => {e.preventDefault(); document.getElementById('affiliation-manager')?.scrollIntoView({behavior: 'smooth'})}} className="underline">Create one below.</a>
+                                 </p>
+                             )
+                         ) : (
+                             <span className="text-slate-400 text-xs italic">N/A</span>
+                         )
+                    ) : (
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                            {orgDisplayName ? (
+                                <>
+                                    <Building2 size={12} className="text-indigo-400 flex-shrink-0" />
+                                    <p className="text-slate-700 font-medium truncate" title={orgDisplayName}>{orgDisplayName}</p>
+                                </>
+                            ) : (
+                                <p className="text-slate-400 italic">-</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Daily Rate (€)</label>
+                    {isEditing ? (
+                        <input 
+                            type="number"
+                            className="w-full border border-slate-200 rounded px-2 py-1 text-sm focus:border-indigo-500 outline-none"
+                            value={data.customDailyRate}
+                            onChange={(e) => setData({ ...data, customDailyRate: parseFloat(e.target.value) })}
+                            aria-label="Daily Rate"
+                        />
+                    ) : (
+                        <p className="text-slate-700 font-medium">€{data.customDailyRate?.toFixed(2) || "0.00"}</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -4,13 +4,29 @@ import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskItem } from "@/components/tasks/TaskItem";
 import Link from "next/link";
 import { format } from "date-fns";
+import { EditWorkPackageButton } from "@/components/works/WorkPackageForm";
+import { CloneWorkPackageButton } from "@/components/works/CloneWorkPackageButton";
 
 export default async function WorkDetailsPage({ params }: { params: { id: string } }) {
   const work = await prisma.work.findUnique({
     where: { id: params.id },
     include: {
+      project: {
+          include: { partners: true }
+      },
       tasks: {
-        orderBy: { startDate: 'asc' }
+        orderBy: { startDate: 'asc' },
+        include: {
+          activities: {
+             include: {
+                modules: { orderBy: { order: 'asc' } }
+             },
+             orderBy: { estimatedStartDate: 'asc' }
+          },
+          modules: {
+             orderBy: { order: 'asc' }
+          }
+        }
       }
     }
   });
@@ -31,6 +47,10 @@ export default async function WorkDetailsPage({ params }: { params: { id: string
              Budget: €{work.budget.toLocaleString()} • {format(work.startDate, 'MMM yyyy')} - {format(work.endDate, 'MMM yyyy')}
            </p>
         </div>
+        <div className="flex items-center gap-2">
+            <EditWorkPackageButton projectId={work.projectId} work={work} />
+            <CloneWorkPackageButton workId={work.id} projectId={work.projectId} />
+        </div>
       </div>
 
       {/* Task List */}
@@ -39,7 +59,13 @@ export default async function WorkDetailsPage({ params }: { params: { id: string
         
         <div className="grid gap-4">
            {work.tasks.map(task => (
-             <TaskItem key={task.id} task={task} workId={work.id} />
+             <TaskItem 
+                key={task.id} 
+                task={task} 
+                workId={work.id} 
+                projectId={work.projectId}
+                partners={work.project.partners}
+             />
            ))}
 
            {work.tasks.length === 0 && (

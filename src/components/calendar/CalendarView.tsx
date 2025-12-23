@@ -72,13 +72,13 @@ export function CalendarView({ events }: CalendarViewProps) {
                 {format(currentDate, 'MMMM yyyy')}
             </h2>
             <div className="flex gap-1">
-                <button onClick={prevMonth} className="p-1 hover:bg-slate-100 rounded text-slate-600">
+                <button onClick={prevMonth} className="p-1 hover:bg-slate-100 rounded text-slate-600" title="Previous Month">
                     <ChevronLeft size={20} />
                 </button>
                 <button onClick={today} className="px-3 py-1 text-sm font-medium hover:bg-slate-100 rounded text-slate-600">
                     Today
                 </button>
-                <button onClick={nextMonth} className="p-1 hover:bg-slate-100 rounded text-slate-600">
+                <button onClick={nextMonth} className="p-1 hover:bg-slate-100 rounded text-slate-600" title="Next Month">
                     <ChevronRight size={20} />
                 </button>
             </div>

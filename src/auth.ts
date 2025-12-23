@@ -8,6 +8,14 @@ async function getUser(email: string) {
   try {
     const user = await prisma.user.findUnique({
       where: { email },
+      include: {
+        partner: true, // Legacy support
+        memberships: {
+           include: {
+               project: { select: { id: true, title: true, acronym: true } }
+           }
+        }
+      }
     });
     return user;
   } catch (error) {
@@ -24,13 +32,20 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
     async session({ session, token }: any) {
       if (token?.sub && session.user) {
         session.user.id = token.sub;
-        // Fetch extra fields if needed, or add them to token in jwt callback
+        // Pass memberships to session for client-side use (dashboard, sidebar)
+        session.user.memberships = token.memberships; 
       }
       return session;
     },
     async jwt({ token, user }: any) {
       if (user) {
         token.sub = user.id;
+        // Store lightweight membership info
+        token.memberships = user.memberships?.map((m: any) => ({
+            projectId: m.projectId,
+            role: m.role,
+            projectAcronym: m.project.acronym
+        })) || [];
       }
       return token;
     },

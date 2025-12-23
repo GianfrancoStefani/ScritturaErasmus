@@ -13,14 +13,20 @@ type TaskData = {
   endDate: Date;
 }
 
+import { TaskAssignments } from "./TaskAssignments";
+
 interface TaskFormProps {
   workId: string;
+  projectId?: string; // Add this
   initialData?: TaskData;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function TaskForm({ workId, initialData, onSuccess, onCancel }: TaskFormProps) {
+export function TaskForm({ workId, projectId, initialData, onSuccess, onCancel }: TaskFormProps) {
+// ...
+// Inside render, before buttons:
+
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const isEditing = !!initialData;
@@ -83,6 +89,7 @@ export function TaskForm({ workId, initialData, onSuccess, onCancel }: TaskFormP
               required 
               className="input-field"
               defaultValue={initialData?.startDate ? format(initialData.startDate, "yyyy-MM-dd") : ""}
+              aria-label="Start Date"
             />
         </div>
 
@@ -94,11 +101,18 @@ export function TaskForm({ workId, initialData, onSuccess, onCancel }: TaskFormP
               required 
               className="input-field"
               defaultValue={initialData?.endDate ? format(initialData.endDate, "yyyy-MM-dd") : ""}
+              aria-label="End Date"
             />
         </div>
       </div>
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
+
+      {isEditing && projectId && initialData?.id && (
+         <div className="mt-8 border-t pt-4">
+             <TaskAssignments taskId={initialData.id} projectId={projectId} />
+         </div>
+      )}
 
       <div className="flex justify-end gap-2">
         {onCancel && <button type="button" onClick={onCancel} className="btn btn-ghost">Cancel</button>}

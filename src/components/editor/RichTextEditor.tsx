@@ -58,11 +58,13 @@ const ToolbarButton = ({
 export function RichTextEditor({ 
     moduleId, 
     initialContent,
-    maxChars
+    maxChars,
+    onContentChange
 }: { 
     moduleId: string; 
     initialContent: string; 
     maxChars?: number;
+    onContentChange?: (html: string) => void;
 }) {
     const [status, setStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
 
@@ -98,8 +100,10 @@ export function RichTextEditor({
             },
         },
         onUpdate: ({ editor }) => {
+            const html = editor.getHTML();
             setStatus('unsaved');
-            debouncedSave(editor.getHTML());
+            debouncedSave(html);
+            if (onContentChange) onContentChange(html);
         },
         immediatelyRender: false,
     });
@@ -143,7 +147,7 @@ export function RichTextEditor({
                     <Italic size={18} />
                 </ToolbarButton>
                 
-                <div style={{ width: 1, height: 24, background: '#e2e8f0', margin: '0 4px' }} />
+                <div className="w-px h-6 bg-slate-200 mx-1" />
 
                 <ToolbarButton
                     onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
@@ -158,7 +162,7 @@ export function RichTextEditor({
                     <Heading2 size={18} />
                 </ToolbarButton>
 
-                <div style={{ width: 1, height: 24, background: '#e2e8f0', margin: '0 4px' }} />
+                <div className="w-px h-6 bg-slate-200 mx-1" />
 
                 <ToolbarButton
                     onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -179,7 +183,7 @@ export function RichTextEditor({
                     <Quote size={18} />
                 </ToolbarButton>
 
-                <div style={{ flex: 1 }} />
+                <div className="flex-1" />
 
                 <div className="flex items-center gap-4 mr-2">
                     {maxChars && (
@@ -193,12 +197,10 @@ export function RichTextEditor({
                              <span>{editor.storage.characterCount?.characters() || 0} / {maxChars}</span>
                         </div>
                     )}
-                     <span style={{ 
-                         fontSize: '0.75rem', 
-                         fontWeight: 600, 
-                         textTransform: 'uppercase',
-                         color: status === 'saved' ? '#22c55e' : status === 'saving' ? '#f59e0b' : '#94a3b8'
-                     }}>
+                     <span className={clsx(
+                         "text-xs font-semibold uppercase",
+                         status === 'saved' ? "text-green-500" : status === 'saving' ? "text-amber-500" : "text-slate-400"
+                     )}>
                          {status === 'saved' ? "Saved" : status === 'saving' ? "Saving..." : "Unsaved"}
                      </span>
                 </div>

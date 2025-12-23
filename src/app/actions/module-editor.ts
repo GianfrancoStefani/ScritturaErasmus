@@ -112,11 +112,80 @@ export async function mergeContribution(contributionId: string) {
 
 export async function updateOfficialText(moduleId: string, content: string) {
     try {
+        // Fetch module to get maxSelections and type AND projectId for revalidation
+        const module = await prisma.module.findUnique({
+            where: { id: moduleId },
+            select: { type: true, maxSelections: true, projectId: true, workId: true, sectionId: true, taskId: true }
+        });
+
+        let updateData: any = { officialText: content };
+
+        // Logic for Popup Completion
+        if (module?.type === 'POPUP') {
+            const maxSelections = module.maxSelections || 1;
+            // Split content by "; " to get selected items. Filter empty strings.
+            const selectedCount = content.split(';').map(s => s.trim()).filter(s => s !== "").length;
+            
+            // Calculate percentage
+            let completion = Math.round((selectedCount / maxSelections) * 100);
+            if (completion > 100) completion = 100;
+
+            updateData.completion = completion;
+
+            // Auto-Status to DONE if 100%
+            if (completion === 100) {
+                updateData.status = "DONE";
+            }
+        }
+
         await prisma.module.update({
             where: { id: moduleId },
-            data: { officialText: content }
+            data: updateData
         });
-        revalidatePath(`/dashboard/projects/[id]/modules/${moduleId}`, "page");
+
+        // Determine Project ID for Revalidation
+        // Since modules can be nested deeply (Task -> Work -> Project), we might need to fetch up the chain
+        // OR, simply revalidate the dashboard paths.
+        // Easiest is to rely on "page" revalidation if we knew the URL. 
+        // But we can try to get the project ID.
+        // For now, let's just revalidate the dashboard structure broadly or use the projectId if attached directly.
+        // Note: The caller usually knows the context.
+        
+        // Strategy: Revalidate the specific project page if we can find the Project ID.
+        // If module is direct child of Project:
+        let projectId = module?.projectId;
+        
+        // If not, we might need to query parents. This is expensive. 
+        // Alternative: Revalidate "/dashboard/projects" and hope the specific page cache is cleared?
+        // No, dynamic pages need specific path or 'layout'.
+        
+        // BETTER: Revalidate the layout.
+        // revalidatePath("/dashboard/projects/[id]", "layout") SHOULD work for all ids if [id] is the param name?
+        // Actually, revalidatePath("/", "layout") clears everything.
+        // Correct usage for dynamic route: revalidatePath(`/dashboard/projects/${projectId}`)
+        
+        // If we don't have projectId, maybe we accept it as an arg? No, signature fixed.
+        // Fetch it.
+        if (!projectId) {
+             if (module?.workId) {
+                 const work = await prisma.work.findUnique({ where: { id: module.workId }, select: { projectId: true } });
+                 projectId = work?.projectId;
+             } else if (module?.sectionId) {
+                 const section = await prisma.section.findUnique({ where: { id: module.sectionId }, select: { projectId: true } });
+                 projectId = section?.projectId;
+             } else if (module?.taskId) {
+                  const task = await prisma.task.findUnique({ where: { id: module.taskId }, select: { work: { select: { projectId: true } } } });
+                  projectId = task?.work.projectId;
+             }
+        }
+        
+        if (projectId) {
+             revalidatePath(`/dashboard/projects/${projectId}`);
+        } else {
+             // Fallback
+             revalidatePath("/dashboard");
+        }
+        
         return { success: true };
     } catch (error) {
          return { error: "Failed to save official text" };

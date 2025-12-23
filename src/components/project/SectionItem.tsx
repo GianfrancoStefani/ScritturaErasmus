@@ -7,7 +7,7 @@ import { Layers, ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { ModuleItem } from "./ModuleItem";
 import { CreateModuleButton } from "@/components/modules/ModuleForm";
 
-export function SectionItem({ section, projectId }: { section: any, projectId: string }) {
+export function SectionItem({ section, projectId, onMoveModule }: { section: any, projectId: string, onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void }) {
     const [isOpen, setIsOpen] = useState(true);
 
     // If we want the SECTION itself to be sortable, we hook useSortable here.
@@ -52,7 +52,8 @@ export function SectionItem({ section, projectId }: { section: any, projectId: s
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    <CreateModuleButton parentId={section.id} parentType="SECTION" className="text-xs" />
+                    <CreateModuleButton parentId={section.id} parentType="SECTION" initialType="TEXT" label="Add Text" className="text-xs" />
+                    <CreateModuleButton parentId={section.id} parentType="SECTION" initialType="POPUP" label="Add Popup" className="text-xs" />
                     <button onClick={() => setIsOpen(!isOpen)} className="text-slate-400 hover:text-slate-600">
                         {isOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                     </button>
@@ -72,8 +73,15 @@ export function SectionItem({ section, projectId }: { section: any, projectId: s
                                 Empty (Drop items here)
                             </div>
                         ) : (
-                            section.modules.map((m: any) => (
-                                <ModuleItem key={m.id} module={m} projectId={projectId} />
+                            section.modules.map((m: any, index: number) => (
+                                <ModuleItem 
+                                    key={m.id} 
+                                    module={m} 
+                                    projectId={projectId} 
+                                    isFirst={index === 0}
+                                    isLast={index === section.modules.length - 1}
+                                    onMove={onMoveModule}
+                                />
                             ))
                         )}
                     </SortableContext>

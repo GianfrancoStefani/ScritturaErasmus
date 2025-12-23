@@ -1,11 +1,9 @@
 "use client";
 
-import { createProject } from "@/app/actions/createProject";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { ProjectForm } from "@/components/dashboard/ProjectForm";
 
 export default function NewProjectPage({ searchParams }: { searchParams: { templateId?: string } }) {
   const { templateId } = searchParams;
@@ -29,33 +27,7 @@ export default function NewProjectPage({ searchParams }: { searchParams: { templ
       </div>
 
       <Card>
-        <form action={async (formData) => {
-            await createProject(formData);
-            return;
-        }} className="space-y-6">
-            {templateId && <input type="hidden" name="templateId" value={templateId} />}
-            <div className="space-y-4">
-                <Input name="title" label="Project Title" placeholder="e.g. Digital Education for All" required />
-                <div className="grid grid-cols-2 gap-4">
-                    <Input name="acronym" label="Acronym" placeholder="DIGI-EDU" required />
-                    <Input name="nationalAgency" label="National Agency" placeholder="IT02" required />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                    <Input name="startDate" type="date" label="Start Date" required />
-                    <Input name="duration" type="number" label="Duration (Months)" placeholder="24" min="12" max="36" required />
-                </div>
-                
-                <Input name="language" label="Submission Language" placeholder="English" defaultValue="English" />
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
-                <Link href="/dashboard">
-                    <Button type="button" variant="ghost">Cancel</Button>
-                </Link>
-                <Button type="submit">Create Project</Button>
-            </div>
-        </form>
+          <ProjectForm templateId={templateId} />
       </Card>
     </div>
   );

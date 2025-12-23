@@ -41,12 +41,12 @@ function WorkPackageForm({ projectId, work, onClose }: { projectId: string; work
         <form action={formAction} className="space-y-4">
              <div className="space-y-1">
                 <label className="text-sm font-medium">Title</label>
-                <input name="title" className="w-full border rounded p-2" required defaultValue={work.title} />
+                <input name="title" className="w-full border rounded p-2" required defaultValue={work.title} placeholder="Work Package Title" aria-label="Title" />
             </div>
 
              <div className="space-y-1">
                 <label className="text-sm font-medium">Budget (€)</label>
-                <input name="budget" type="number" step="0.01" className="w-full border rounded p-2" required defaultValue={work.budget} />
+                <input name="budget" type="number" step="0.01" className="w-full border rounded p-2" required defaultValue={work.budget} placeholder="0.00" aria-label="Budget" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -58,6 +58,7 @@ function WorkPackageForm({ projectId, work, onClose }: { projectId: string; work
                         className="w-full border rounded p-2" 
                         required 
                         defaultValue={work.startDate ? format(new Date(work.startDate), "yyyy-MM-dd") : ""}
+                        aria-label="Start Date"
                     />
                 </div>
                  <div className="space-y-1">
@@ -68,6 +69,7 @@ function WorkPackageForm({ projectId, work, onClose }: { projectId: string; work
                         className="w-full border rounded p-2" 
                         required 
                         defaultValue={work.endDate ? format(new Date(work.endDate), "yyyy-MM-dd") : ""}
+                        aria-label="End Date"
                     />
                 </div>
             </div>

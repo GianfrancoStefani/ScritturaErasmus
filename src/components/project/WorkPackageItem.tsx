@@ -11,7 +11,11 @@ import { CreateTaskButton } from "@/components/tasks/CreateTaskButton";
 import { EditWorkPackageButton } from "@/components/works/WorkPackageForm";
 import { CloneWorkPackageButton } from "@/components/works/CloneWorkPackageButton";
 
-export function WorkPackageItem({ work, projectId }: { work: any, projectId: string }) {
+import { ActivityItem } from "@/components/activities/ActivityItem";
+import { ActivityForm } from "@/components/activities/ActivityForm";
+
+export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }: { work: any, projectId: string, partners?: any[], onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void }) {
+    console.log(`[WorkPackageItem] Render ${work.title}. Modules:`, work.modules?.map((m: any) => m.title).join(', '));
     const [isOpen, setIsOpen] = useState(true); // Main WP Expand
     const [showModules, setShowModules] = useState(true); // Level 1 Modules
     const [showTasks, setShowTasks] = useState(true); // Tasks Section
@@ -85,8 +89,15 @@ export function WorkPackageItem({ work, projectId }: { work: any, projectId: str
                                     items={work.modules.map((m: any) => m.id)} 
                                     strategy={verticalListSortingStrategy}
                                 >
-                                    {work.modules.map((m: any) => (
-                                        <ModuleItem key={m.id} module={m} projectId={projectId} />
+                                    {work.modules.map((m: any, index: number) => (
+                                        <ModuleItem 
+                                            key={m.id} 
+                                            module={m} 
+                                            projectId={projectId} 
+                                            isFirst={index === 0}
+                                            isLast={index === work.modules.length - 1}
+                                            onMove={onMoveModule}
+                                        />
                                     ))}
                                     {work.modules.length === 0 && (
                                         <div className="text-center py-2 text-xs text-slate-400 border border-dashed rounded">No modules</div>
@@ -111,30 +122,70 @@ export function WorkPackageItem({ work, projectId }: { work: any, projectId: str
 
                         {showTasks && (
                             <div className="p-2 space-y-4">
-                                {/* Iterate Tasks - For now just rendering them. Making Tasks sortable is next level. */}
                                 {work.tasks.map((task: any) => (
                                     <div key={task.id} className="bg-white border border-slate-200 rounded shadow-sm p-3">
-                                        <div className="font-semibold text-sm mb-2 text-slate-700">{task.title}</div>
-                                        {/* Task Modules */}
-                                        <SortableContext 
-                                            id={`task-modules-${task.id}`} 
-                                            items={task.modules.map((m: any) => m.id)} 
-                                            strategy={verticalListSortingStrategy}
-                                        >
-                                            {task.modules.map((m: any) => (
-                                                <ModuleItem key={m.id} module={m} projectId={projectId} />
-                                            ))}
-                                        </SortableContext>
-                                        <div className="mt-2">
-                                            <CreateModuleButton parentId={task.id} parentType="TASK" className="text-[10px] py-0 h-6" />
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="font-semibold text-sm text-slate-700">{task.title}</div>
+                                            <div className="flex gap-2">
+                                                 <ActivityForm 
+                                                    parentId={task.id} 
+                                                    projectId={projectId} 
+                                                    partners={partners}
+                                                    className="h-6 text-[10px] px-2 py-0"
+                                                />
+                                            </div>
                                         </div>
+
+                                        {/* Task Modules */}
+                                        <div className="mb-4">
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Modules</div>
+                                            <SortableContext 
+                                                id={`task-modules-${task.id}`} 
+                                                items={task.modules.map((m: any) => m.id)} 
+                                                strategy={verticalListSortingStrategy}
+                                            >
+                                                {task.modules.map((m: any, index: number) => (
+                                                    <ModuleItem 
+                                                        key={m.id} 
+                                                        module={m} 
+                                                        projectId={projectId} 
+                                                        isFirst={index === 0}
+                                                        isLast={index === task.modules.length - 1}
+                                                        onMove={onMoveModule}
+                                                    />
+                                                ))}
+                                            </SortableContext>
+                                            <div className="mt-2 text-center">
+                                                <CreateModuleButton parentId={task.id} parentType="TASK" className="text-[10px] py-0 h-6" label="Add Module" />
+                                            </div>
+                                        </div>
+
+                                        {/* Activities List */}
+                                        {task.activities && (
+                                           <div className="border-t border-slate-100 pt-2 mt-2">
+                                                <div className="text-[10px] font-bold text-indigo-400 uppercase mb-2">Activities ({task.activities.length})</div>
+                                                <div className="space-y-3">
+                                                    {task.activities.map((act: any) => (
+                                                        <ActivityItem 
+                                                            key={act.id} 
+                                                            activity={act} 
+                                                            projectId={projectId} 
+                                                            partners={partners}
+                                                            onMoveModule={onMoveModule}
+                                                        />
+                                                    ))}
+                                                    {task.activities.length === 0 && (
+                                                        <div className="text-center py-2 text-[10px] text-slate-400 italic">No activities</div>
+                                                    )}
+                                                </div>
+                                           </div>
+                                        )}
                                     </div>
                                 ))}
                                 <CreateTaskButton workId={work.id} className="w-full text-xs dashed border-slate-300 text-slate-400" />
                             </div>
                         )}
                     </div>
-
                 </div>
             )}
         </div>

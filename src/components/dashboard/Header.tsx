@@ -1,5 +1,6 @@
 
 
+import Link from "next/link";
 import { Bell, Search, LogOut } from "lucide-react";
 import { auth } from "@/auth";
 import { logout } from "@/app/actions/authActions";
@@ -25,7 +26,7 @@ export async function Header() {
 
       {/* Right Section */}
       <div className="flex items-center gap-4">
-        <button className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100">
+        <button className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100" title="Notifications">
           <Bell size={20} />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
         </button>
@@ -33,13 +34,15 @@ export async function Header() {
         <div className="h-8 w-px bg-slate-200" />
 
         <div className="flex items-center gap-3">
-          <div className="text-right hidden md:block">
-            <p className="text-sm font-medium text-slate-700">{user?.name || 'Guest User'}</p>
-            <p className="text-xs text-slate-500">{user?.email || 'Coordinator'}</p>
-          </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 font-bold">
-            {initials}
-          </div>
+          <Link href="/dashboard/settings" className="flex items-center gap-3 hover:bg-slate-50 rounded p-1 transition-colors">
+            <div className="text-right hidden md:block">
+                <p className="text-sm font-medium text-slate-700">{user?.name || 'Guest User'}</p>
+                <p className="text-xs text-slate-500">{user?.email || 'Coordinator'}</p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 font-bold">
+                {initials}
+            </div>
+          </Link>
           
           <form action={logout}>
             <Button size="sm" variant="ghost" className="text-slate-500 hover:text-red-600">

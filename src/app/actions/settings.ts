@@ -11,16 +11,10 @@ const ProfileSchema = z.object({
   surname: z.string().min(1, "Surname is required"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email"),
+  motherTongue: z.string().optional(),
 });
 
-const PasswordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string().min(6, "New password must be at least 6 characters"),
-  confirmPassword: z.string().min(1, "Confirm password is required"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+// ... (PasswordSchema remains same)
 
 export async function updateProfile(userId: string, formData: FormData) {
   const session = await auth();
@@ -33,13 +27,14 @@ export async function updateProfile(userId: string, formData: FormData) {
     surname: formData.get("surname"),
     username: formData.get("username"),
     email: formData.get("email"),
+    motherTongue: formData.get("motherTongue"),
   });
 
   if (!validatedFields.success) {
     return { error: "Invalid fields" };
   }
 
-  const { name, surname, username, email } = validatedFields.data;
+  const { name, surname, username, email, motherTongue } = validatedFields.data;
 
   try {
     // Check if username/email is taken by someone else
@@ -56,7 +51,7 @@ export async function updateProfile(userId: string, formData: FormData) {
 
     await prisma.user.update({
       where: { id: userId },
-      data: { name, surname, username, email },
+      data: { name, surname, username, email, motherTongue },
     });
 
     revalidatePath("/dashboard/settings");

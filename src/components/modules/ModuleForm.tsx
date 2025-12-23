@@ -52,16 +52,28 @@ function TypeDependentFields({ initialType, initialOptions, fieldErrors }: { ini
 
 const initialState: ModuleActionState = { error: null, fieldErrors: null, success: false };
 
-export function CreateModuleButton({ parentId, parentType, className }: { parentId: string, parentType: 'PROJECT' | 'WORK' | 'TASK' | 'ACTIVITY' | 'SECTION', className?: string }) {
+export function CreateModuleButton({ 
+    parentId, 
+    parentType, 
+    className, 
+    initialType = "TEXT",
+    label
+}: { 
+    parentId: string, 
+    parentType: 'PROJECT' | 'WORK' | 'TASK' | 'ACTIVITY' | 'SECTION', 
+    className?: string, 
+    initialType?: 'TEXT' | 'POPUP',
+    label?: string
+}) {
     const [isOpen, setIsOpen] = useState(false);
     
     return (
         <>
             <Button size="sm" onClick={() => setIsOpen(true)} className={className}>
-                <Plus size={16} className="mr-1" /> Add Module
+                <Plus size={16} className="mr-1" aria-hidden="true" /> {label || "Add Module"}
             </Button>
-            <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Create New Module">
-                <ModuleForm parentId={parentId} parentType={parentType} onClose={() => setIsOpen(false)} />
+            <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={`Create New ${initialType === 'POPUP' ? 'Popup' : 'Text'} Module`}>
+                <ModuleForm parentId={parentId} parentType={parentType} onClose={() => setIsOpen(false)} initialType={initialType} />
             </Modal>
         </>
     );
@@ -72,7 +84,7 @@ export function EditModuleButton({ module, className }: { module: any, className
 
      return (
         <>
-            <button onClick={() => setIsOpen(true)} className={`text-slate-400 hover:text-indigo-600 transition-colors ${className}`}>
+            <button onClick={() => setIsOpen(true)} className={`text-slate-400 hover:text-indigo-600 transition-colors ${className}`} title="Edit Module">
                  <Edit size={16} />
             </button>
             <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Edit Module Metadata">
@@ -82,18 +94,19 @@ export function EditModuleButton({ module, className }: { module: any, className
      )
 }
 
-function ModuleForm({ parentId, parentType, module, onClose, isEdit = false }: { 
+function ModuleForm({ parentId, parentType, module, onClose, isEdit = false, initialType = "TEXT" }: { 
     parentId?: string, 
     parentType?: string, 
     module?: any, 
     onClose: () => void,
-    isEdit?: boolean
+    isEdit?: boolean,
+    initialType?: string
 }) {
     const action = isEdit ? updateModuleMetadata : createModule;
     const [state, formAction] = useFormState(action, initialState);
     
     // Controlled state for Type
-    const [type, setType] = useState(module?.type || "TEXT");
+    const [type, setType] = useState(module?.type || initialType);
     const [optionsJson, setOptionsJson] = useState(module?.options || "[]");
 
     useEffect(() => {
@@ -155,6 +168,7 @@ function ModuleForm({ parentId, parentType, module, onClose, isEdit = false }: {
                     <label className="text-sm font-medium">Module Type</label>
                     <select 
                         name="type" 
+                        aria-label="Module Type"
                         className="w-full border rounded p-2" 
                         value={type}
                         onChange={(e) => setType(e.target.value)}
@@ -174,20 +188,46 @@ function ModuleForm({ parentId, parentType, module, onClose, isEdit = false }: {
             </div>
 
             {type === 'POPUP' && (
-                <div className="space-y-1 bg-indigo-50 p-3 rounded border border-indigo-100">
-                    <label className="text-sm font-medium text-indigo-900">Popup Options (Comma separated)</label>
-                    <textarea 
-                        className="w-full border rounded p-2 text-sm"
-                        defaultValue={initialOptionsCsv}
-                        onChange={handleOptionsChange}
-                        placeholder="Option A, Option B, Option C..."
-                        rows={3}
-                    />
-                    <input type="hidden" name="options" value={optionsJson} />
-                    <p className="text-xs text-indigo-600">Enter values separated by commas. Users will be able to select from these values.</p>
+                <div className="space-y-3 bg-yellow-50 p-3 rounded border border-yellow-200">
+                    <div className="space-y-1">
+                        <label className="text-sm font-medium text-yellow-900">Popup Options (Comma separated)</label>
+                        <textarea 
+                            className="w-full border rounded p-2 text-sm"
+                            defaultValue={initialOptionsCsv}
+                            onChange={handleOptionsChange}
+                            placeholder="Option A, Option B, Option C..."
+                            rows={3}
+                        />
+                        <input type="hidden" name="options" value={optionsJson} />
+                        <p className="text-xs text-yellow-700">Enter values separated by commas.</p>
+                    </div>
+                    
+                    <div className="space-y-1">
+                        <Input 
+                            name="maxSelections" 
+                            label="Setup (Max selections to choice)" 
+                            type="number"
+                            min={1}
+                            defaultValue={module?.maxSelections || 1}
+                            placeholder="1"
+                            className="bg-white"
+                        />
+                         <p className="text-xs text-yellow-700">How many options can the user select?</p>
+                    </div>
                 </div>
             )}
             
+            <div className="space-y-1">
+                 <Input 
+                    name="completion" 
+                    label="Start completion % (Setup)" 
+                    type="number"
+                    min={0}
+                    max={100}
+                    defaultValue={module?.completion || 0}
+                    placeholder="0"
+                />
+            </div>
 
             <div className="space-y-1">
                 <label className="text-sm font-medium">Guidelines (Funding body Instructions)</label>

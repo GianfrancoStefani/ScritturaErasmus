@@ -52,12 +52,12 @@ export function PartnerForm({ projectId, initialData, onClose }: { projectId: st
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Name</label>
-                    <input name="name" className="w-full border rounded p-2" required placeholder="University of X" defaultValue={initialData?.name} />
+                    <input name="name" className="w-full border rounded p-2" required placeholder="University of X" defaultValue={initialData?.name} aria-label="Partner Name" />
                     {state?.fieldErrors?.name && <p className="text-red-500 text-xs">{state.fieldErrors.name[0]}</p>}
                 </div>
                  <div className="space-y-1">
                     <label className="text-sm font-medium">Website</label>
-                    <input name="website" className="w-full border rounded p-2" placeholder="https://..." defaultValue={initialData?.website || ""} />
+                    <input name="website" className="w-full border rounded p-2" placeholder="https://..." defaultValue={initialData?.website || ""} aria-label="Website" />
                     {state?.fieldErrors?.website && <p className="text-red-500 text-xs">{state.fieldErrors.website[0]}</p>}
                 </div>
             </div>
@@ -65,12 +65,12 @@ export function PartnerForm({ projectId, initialData, onClose }: { projectId: st
             <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-1">
                     <label className="text-sm font-medium">Nation</label>
-                    <input name="nation" className="w-full border rounded p-2" required placeholder="Italy" defaultValue={initialData?.nation} />
+                    <input name="nation" className="w-full border rounded p-2" required placeholder="Italy" defaultValue={initialData?.nation} aria-label="Nation" />
                     {state?.fieldErrors?.nation && <p className="text-red-500 text-xs">{state.fieldErrors.nation[0]}</p>}
                 </div>
                  <div className="space-y-1">
                     <label className="text-sm font-medium">City</label>
-                    <input name="city" className="w-full border rounded p-2" required placeholder="Rome" defaultValue={initialData?.city} />
+                    <input name="city" className="w-full border rounded p-2" required placeholder="Rome" defaultValue={initialData?.city} aria-label="City" />
                     {state?.fieldErrors?.city && <p className="text-red-500 text-xs">{state.fieldErrors.city[0]}</p>}
                 </div>
             </div>
@@ -78,7 +78,7 @@ export function PartnerForm({ projectId, initialData, onClose }: { projectId: st
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Role</label>
-                    <select name="role" className="w-full border rounded p-2" defaultValue={initialData?.role || "Partner"}>
+                    <select name="role" className="w-full border rounded p-2" defaultValue={initialData?.role || "Partner"} aria-label="Role">
                         <option value="Partner">Partner</option>
                         <option value="Coordinator">Coordinator</option>
                         <option value="Associated">Associated</option>
@@ -86,7 +86,7 @@ export function PartnerForm({ projectId, initialData, onClose }: { projectId: st
                 </div>
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Type</label>
-                     <select name="type" className="w-full border rounded p-2" defaultValue={initialData?.type || "University"}>
+                     <select name="type" className="w-full border rounded p-2" defaultValue={initialData?.type || "University"} aria-label="Type">
                         <option value="University">University</option>
                         <option value="SME">SME</option>
                         <option value="NGO">NGO</option>
@@ -98,19 +98,19 @@ export function PartnerForm({ projectId, initialData, onClose }: { projectId: st
              
             <div className="space-y-1">
                 <label className="text-sm font-medium">Budget (€)</label>
-                <input name="budget" type="number" step="0.01" className="w-full border rounded p-2" defaultValue={initialData?.budget || 0} />
+                <input name="budget" type="number" step="0.01" className="w-full border rounded p-2" defaultValue={initialData?.budget || 0} placeholder="0.00" aria-label="Budget" />
                 {state?.fieldErrors?.budget && <p className="text-red-500 text-xs">{state.fieldErrors.budget[0]}</p>}
             </div>
 
              <div className="space-y-1">
                     <label className="text-sm font-medium">Contact Email</label>
-                    <input name="email" type="email" className="w-full border rounded p-2" defaultValue={initialData?.email || ""} />
+                    <input name="email" type="email" className="w-full border rounded p-2" defaultValue={initialData?.email || ""} placeholder="contact@example.com" aria-label="Contact Email" />
                     {state?.fieldErrors?.email && <p className="text-red-500 text-xs">{state.fieldErrors.email[0]}</p>}
             </div>
             
              <div className="space-y-1">
                     <label className="text-sm font-medium">Logo URL</label>
-                    <input name="logo" type="url" className="w-full border rounded p-2" placeholder="https://..." defaultValue={initialData?.logo || ""} />
+                    <input name="logo" type="url" className="w-full border rounded p-2" placeholder="https://..." defaultValue={initialData?.logo || ""} aria-label="Logo URL" />
             </div>
 
             <div className="text-red-500 text-sm">
@@ -147,6 +147,7 @@ export function EditPartnerButton({ projectId, partner }: { projectId: string, p
             <button 
                 onClick={(e) => { e.stopPropagation(); setOpen(true); }}
                 className="text-slate-400 hover:text-indigo-600 p-1"
+                title="Edit Partner"
             >
                 <Edit2 size={16} />
             </button>

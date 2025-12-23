@@ -99,3 +99,44 @@ export async function updateTask(taskId: string, workId: string, formData: FormD
     return { error: "Failed to update task" };
   }
 }
+
+export async function assignUserToTask(taskId: string, userId: string, days: number, months: string[]) {
+  try {
+     await prisma.assignment.create({
+        data: {
+           taskId,
+           userId,
+           days,
+           months: JSON.stringify(months),
+           dailyRate: 0 
+        }
+     });
+     
+     // We should revalidate the task page or work page
+     // revalidatePath(`/dashboard/works/${workId}`); // We don't have workId easy, so maybe path?
+     // Just return success
+     return { success: true };
+  } catch (error) {
+     console.error("Failed to assign user:", error);
+     return { error: "Failed to assign user" };
+  }
+}
+
+export async function removeAssignment(assignmentId: string) {
+  try {
+     await prisma.assignment.delete({ where: { id: assignmentId } });
+     return { success: true };
+  } catch (error) {
+     return { error: "Failed to remove assignment" }; 
+  }
+}
+
+export async function getTaskAssignments(taskId: string) {
+    const assignments = await prisma.assignment.findMany({
+        where: { taskId },
+        include: {
+            user: { select: { id: true, name: true, surname: true, email: true } }
+        }
+    });
+    return assignments;
+}

@@ -22,6 +22,8 @@ model Project {
   partners       Partner[]
   modules        Module[]  // Modules directly attached to Project
   sections       Section[]
+  members        ProjectMember[]
+  invitations    Invitation[]
   
   isTemplate     Boolean   @default(false)
   
@@ -51,6 +53,8 @@ model Work {
   endDate       DateTime
   budget        Float
   
+  order         Int       @default(0)
+
   tasks         Task[]
   modules       Module[]
 
@@ -114,6 +118,9 @@ model Partner {
   id             String    @id @default(cuid())
   projectId      String
   project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
   
   name           String
   nation         String
@@ -127,6 +134,7 @@ model Partner {
   logo           String?
 
   users          User[]
+  projectMembers ProjectMember[]
   leadingActivities Activity[] @relation("LeadingActivity")
   
   createdAt      DateTime  @default(now())
@@ -135,8 +143,10 @@ model Partner {
 
 model User {
   id             String    @id @default(cuid())
-  partnerId      String
-  partner        Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  
+  // Legacy single-partner link (Optional now)
+  partnerId      String?
+  partner        Partner?  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   
   role           String    // Hierarchical role in partner/project
   surname        String
@@ -148,11 +158,16 @@ model User {
   landline       String?
   username       String    @unique
   password       String    
+  motherTongue   String?   // User's native language (e.g. 'it', 'en')
   
   assignments    Assignment[]
   textComponents TextComponent[]
   comments       Comment[]
   ratings        Rating[]
+  
+  memberships    ProjectMember[]
+  affiliations   UserAffiliation[]
+  availabilities UserAvailability[]
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -200,12 +215,23 @@ model Module {
   status      String   @default("TO_DONE") // TO_DONE, UNDER_REVIEW, DONE, AUTHORIZED
   completion  Int      @default(0)
   guidelines  String?  // Funding body instructions
+  commentEndingDate DateTime?
   
   components  TextComponent[]
   attachments Attachment[]
+  versions    ModuleVersion[]
+  comments    Comment[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model ModuleVersion {
+  id        String   @id @default(cuid())
+  moduleId  String
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  content   String   // The official text at this version
+  createdAt DateTime @default(now())
 }
 
 model TextComponent {
@@ -232,8 +258,13 @@ model TextComponent {
 
 model Comment {
   id              String        @id @default(cuid())
-  textComponentId String
-  textComponent   TextComponent @relation(fields: [textComponentId], references: [id], onDelete: Cascade)
+  
+  textComponentId String?
+  textComponent   TextComponent? @relation(fields: [textComponentId], references: [id], onDelete: Cascade)
+  
+  moduleId        String?
+  module          Module?       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  
   userId          String
   user            User          @relation(fields: [userId], references: [id])
   content         String
@@ -262,4 +293,153 @@ model Attachment {
   textComponent   TextComponent? @relation(fields: [textComponentId], references: [id], onDelete: Cascade)
   
   createdAt       DateTime @default(now())
+}
+
+// --- Matrix Architecture Models ---
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  shortName   String?  // Acronym
+  type        String?  // University, NGO, Company, etc.
+  nation      String?
+  address     String?
+  logoUrl     String?
+  website     String?
+  email       String?
+  
+  departments Department[]
+  affiliations UserAffiliation[]
+  partners    Partner[]
+  projectMembers ProjectMember[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Department {
+  id             String   @id @default(cuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  projectMembers ProjectMember[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model UserAvailability {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  year      Int    
+  
+  // Monthly availability in days
+  daysJan   Int    @default(0)
+  daysFeb   Int    @default(0)
+  daysMar   Int    @default(0)
+  daysApr   Int    @default(0)
+  daysMay   Int    @default(0)
+  daysJun   Int    @default(0)
+  daysJul   Int    @default(0)
+  daysAug   Int    @default(0)
+  daysSep   Int    @default(0)
+  daysOct   Int    @default(0)
+  daysNov   Int    @default(0)
+  daysDec   Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, year])
+}
+
+model ProjectMember {
+  id           String   @id @default(cuid())
+  
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  partnerId    String
+  partner      Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  
+  role         String   // Project-specific role (e.g. Coordinator, Partner)
+  
+  // Cost & Profile Overrides
+  customDailyRate Float? 
+  projectRole       String? // Job Title in this project (e.g. Senior Researcher)
+  participationMode String? // ENTITY, NGO, INDEPENDENT
+  
+  // Linked Affiliation Card
+  userAffiliationId String?
+  userAffiliation   UserAffiliation? @relation(fields: [userAffiliationId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, projectId]) 
+}
+
+model UserAffiliation {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  departmentName String?
+  role           String?      // Role within this organization (e.g. Professor)
+  
+  // Card Details
+  contactPerson  String?
+  phone          String?
+  email          String?      // Specific email for this affiliation
+  
+  projectMembers ProjectMember[]
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model StandardCost {
+  id          String   @id @default(cuid())
+  area        String   // Macro-Area / Country Group (e.g. "Group 1")
+  nation      String   // ISO Code or Name
+  role        String   // e.g. "Researcher"
+  dailyRate   Float    // Daily Cost in Euro
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([nation, role]) 
+}
+model Invitation {
+  id        String   @id @default(cuid())
+  email     String
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  token     String   @unique
+  status    String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  
+  // Optional: Pre-assigned role or partner if known?
+  // User says they choose Partner in the wizard, so keep generic.
+  
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([email, projectId])
 }

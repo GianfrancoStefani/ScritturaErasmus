@@ -44,6 +44,23 @@ export function ProfileForm({ user }: { user: User }) {
         <Input name="email" type="email" defaultValue={user.email || ""} required />
       </div>
 
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Mother Tongue (Lingua madre)</label>
+        <p className="text-xs text-slate-500 mb-1">Used as default language for translations.</p>
+        <select 
+            name="motherTongue" 
+            defaultValue={user.motherTongue || "en"} 
+            className="w-full border border-slate-300 rounded px-3 py-2 text-sm bg-white"
+        >
+            <option value="en">English</option>
+            <option value="it">Italian</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="pt">Portuguese</option>
+        </select>
+      </div>
+
       <div className="pt-2">
         <Button type="submit" disabled={isPending}>
             {isPending ? "Saving..." : "Save Profile"}

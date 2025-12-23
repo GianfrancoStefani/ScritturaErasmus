@@ -29,15 +29,15 @@ async function getProject(id: string) {
         include: {
             modules: { include: moduleInclude, orderBy: { order: 'asc' } },
             works: {
-                orderBy: { startDate: 'asc' },
+                orderBy: { order: 'asc' },
                 include: {
-                    modules: { include: moduleInclude },
+                    modules: { include: moduleInclude, orderBy: { order: 'asc' } },
                     tasks: {
                         include: {
-                            modules: { include: moduleInclude },
+                            modules: { include: moduleInclude, orderBy: { order: 'asc' } },
                             activities: {
                                 include: { 
-                                    modules: { include: moduleInclude }
+                                    modules: { include: moduleInclude, orderBy: { order: 'asc' } }
                                 }
                             }
                         }
@@ -47,16 +47,16 @@ async function getProject(id: string) {
         }
       },
       works: {
-        where: { sectionId: null }, // Only fetch unassigned works here
-        orderBy: { startDate: 'asc' },
+        where: { sectionId: null },
+        orderBy: { order: 'asc' },
         include: {
-          modules: { include: moduleInclude },
+          modules: { include: moduleInclude, orderBy: { order: 'asc' } },
           tasks: {
             include: {
-              modules: { include: moduleInclude },
+              modules: { include: moduleInclude, orderBy: { order: 'asc' } },
               activities: {
                 include: { 
-                    modules: { include: moduleInclude }
+                    modules: { include: moduleInclude, orderBy: { order: 'asc' } }
                 }
               }
             }
@@ -64,7 +64,7 @@ async function getProject(id: string) {
         }
       },
       modules: { 
-          where: { sectionId: null }, // Only fetch unassigned modules here
+          where: { sectionId: null }, 
           orderBy: { order: 'asc' },
           include: moduleInclude
       },

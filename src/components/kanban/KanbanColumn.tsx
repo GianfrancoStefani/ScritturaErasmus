@@ -4,34 +4,63 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { KanbanCard } from './KanbanCard';
 import { ModuleTask } from './KanbanBoard';
+import { ChevronRight, Layers } from 'lucide-react';
+import { useMemo } from 'react';
 
 interface KanbanColumnProps {
   id: string;
   title: string;
   tasks: ModuleTask[];
+  groupBySection?: boolean;
+  onPreview?: (task: ModuleTask) => void;
 }
 
-export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, tasks, groupBySection, onPreview }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({
     id: id,
   });
 
-  return (
-    <div className="flex flex-col w-80 bg-slate-100/50 rounded-xl p-4 border border-slate-200">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-slate-700">{title}</h3>
-        <span className="bg-slate-200 text-slate-600 text-xs px-2 py-1 rounded-full font-bold">
-            {tasks.length}
-        </span>
-      </div>
+  const groupedTasks = useMemo(() => {
+      if (!groupBySection) return null;
       
-      <div ref={setNodeRef} className="flex-1 flex flex-col gap-3 min-h-[150px]">
+      const groups: Record<string, ModuleTask[]> = {};
+      const order: string[] = []; 
+      
+      tasks.forEach(task => {
+          const sectionKey = task.sectionTitle || "General Modules";
+          if (!groups[sectionKey]) {
+              groups[sectionKey] = [];
+              order.push(sectionKey);
+          }
+          groups[sectionKey].push(task);
+      });
+      
+      return { groups, order };
+  }, [tasks, groupBySection]);
+
+  return (
+    <div ref={setNodeRef} className="flex flex-col flex-1 min-h-[150px] gap-3">
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-            {tasks.map((task) => (
-                <KanbanCard key={task.id} task={task} />
-            ))}
+            {groupBySection && groupedTasks ? (
+                groupedTasks.order.map(section => (
+                    <details key={section} open className="group/section mb-2">
+                        <summary className="flex items-center gap-2 mb-2 cursor-pointer list-none select-none text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-indigo-600 transition-colors">
+                            <ChevronRight size={12} className="transition-transform group-open/section:rotate-90" />
+                            {section}
+                        </summary>
+                        <div className="pl-2 border-l border-slate-200/60 flex flex-col gap-3">
+                            {groupedTasks.groups[section].map(task => (
+                                <KanbanCard key={task.id} task={task} onPreview={onPreview} />
+                            ))}
+                        </div>
+                    </details>
+                ))
+            ) : (
+                tasks.map((task) => (
+                    <KanbanCard key={task.id} task={task} onPreview={onPreview} />
+                ))
+            )}
         </SortableContext>
-      </div>
     </div>
   );
 }
