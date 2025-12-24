@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createTask, updateTask } from "@/app/actions/tasks";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type TaskData = {
   id?: string;
@@ -28,6 +29,8 @@ export function TaskForm({ workId, projectId, initialData, onSuccess, onCancel }
 // Inside render, before buttons:
 
   const [error, setError] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(initialData?.startDate ? format(initialData.startDate, "yyyy-MM-dd") : "");
+  const [endDate, setEndDate] = useState(initialData?.endDate ? format(initialData.endDate, "yyyy-MM-dd") : "");
   const router = useRouter();
   const isEditing = !!initialData;
 
@@ -81,29 +84,21 @@ export function TaskForm({ workId, projectId, initialData, onSuccess, onCancel }
             />
         </div>
 
-        <div className="flex flex-col gap-1">
-             <label className="text-sm font-medium">Start Date</label>
-            <input 
-              name="startDate" 
-              type="date" 
-              required 
-              className="input-field"
-              defaultValue={initialData?.startDate ? format(initialData.startDate, "yyyy-MM-dd") : ""}
-              aria-label="Start Date"
-            />
-        </div>
+        <DatePicker 
+          name="startDate" 
+          label="Start Date" 
+          required 
+          value={startDate}
+          onChange={setStartDate}
+        />
 
-        <div className="flex flex-col gap-1">
-             <label className="text-sm font-medium">End Date</label>
-            <input 
-              name="endDate" 
-              type="date" 
-              required 
-              className="input-field"
-              defaultValue={initialData?.endDate ? format(initialData.endDate, "yyyy-MM-dd") : ""}
-              aria-label="End Date"
-            />
-        </div>
+        <DatePicker 
+          name="endDate" 
+          label="End Date" 
+          required 
+          value={endDate}
+          onChange={setEndDate}
+        />
       </div>
 
       {error && <p className="text-red-500 text-sm">{error}</p>}

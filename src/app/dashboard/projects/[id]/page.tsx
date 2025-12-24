@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ArrowLeft, Plus, FileText, Layers, Calendar, Edit, Users, FileDown } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Layers, Calendar, Edit, Users, FileDown, Settings, Eye } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
@@ -13,6 +13,8 @@ import { CreateModuleButton, EditModuleButton } from "@/components/modules/Modul
 import { CreateSectionButton } from "@/components/projects/CreateSectionButton";
 import { SaveTemplateButton } from "@/components/projects/SaveTemplateButton";
 import { ProjectBoard } from "@/components/project/ProjectBoard";
+import { VersionHistory } from "@/components/project/VersionHistory";
+import { ExcelTools } from "@/components/project/ExcelTools";
 import { auth } from "@/auth";
 import { ProjectHeader } from "@/components/project/ProjectHeader";
 
@@ -106,33 +108,36 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
   if (!project) notFound();
 
-  return (
-    <div className="space-y-8 pb-20">
-      {/* Header with Logo Upload */}
+  return <div className="space-y-8 pb-20">
       <ProjectHeader project={project}>
+        <div className="flex items-center gap-2">
           <CreateSectionButton projectId={project.id} minimal />
-          <div className="flex items-center gap-2">
-            <Link href={`/dashboard/projects/${project.id}/setup`} title="Setup & Info">
-                <Button variant="secondary" className="w-9 h-9 p-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200 flex items-center justify-center">
-                    <Edit size={16} />
-                </Button>
-            </Link>
-            <Link href={`/dashboard/projects/${project.id}/partners`} title="Manage Partners">
-                <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center">
-                    <Users size={16} />
-                </Button>
-            </Link>
-            <Link href={`/dashboard/projects/${project.id}/timeline`} title="Gantt Timeline">
-                <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center">
-                    <Calendar size={16} />
-                </Button>
-            </Link>
-            <Link href={`/dashboard/projects/${project.id}/export`} title="Export PDF">
-                <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center">
-                    <FileDown size={16} />
-                </Button>
-            </Link>
-          </div>
+          <VersionHistory projectId={project.id} />
+          <Link href={`/dashboard/projects/${project.id}/setup`} title="Setup & Info">
+            <Button variant="secondary" className="w-9 h-9 p-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200 flex items-center justify-center">
+              <Edit size={16} />
+            </Button>
+          </Link>
+          <Link href={`/dashboard/projects/${project.id}/partners`} title="Manage Partners">
+            <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center">
+              <Users size={16} />
+            </Button>
+          </Link>
+          <Link href={`/dashboard/projects/${project.id}/timeline`} title="Gantt Timeline">
+            <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center">
+              <Calendar size={16} />
+            </Button>
+          </Link>
+          <Link href={`/dashboard/projects/${project.id}/tools`} title="Project Tools & Export">
+            <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100">
+              <Settings size={16} />
+            </Button>
+          </Link>
+          <Link href={`/dashboard/projects/${project.id}/preview`} title="Zen Preview & Review">
+            <Button variant="secondary" className="w-9 h-9 p-0 flex items-center justify-center bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100 ring-2 ring-indigo-500/20 shadow-sm animate-pulse-slow">
+              <Eye size={16} />
+            </Button>
+          </Link>
           <SaveTemplateButton projectId={project.id} projectTitle={project.title} />
           <DeleteButton 
             id={project.id} 
@@ -140,12 +145,11 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             redirectAfter="/dashboard/projects"
             confirmMessage="Are you sure you want to delete this ENTIRE project?"
           />
+        </div>
       </ProjectHeader>
 
-      {/* Project Board (Client Component handling DND and Layout) */}
       <ProjectBoard project={project} />
-    </div>
-  );
+    </div>;
 }
 
 function Section({ title, children }: { title: string, children: React.ReactNode }) {

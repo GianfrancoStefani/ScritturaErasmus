@@ -21,6 +21,7 @@
     "@tiptap/starter-kit": "^3.14.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/diff": "^7.0.2",
+    "@types/exceljs": "^0.5.3",
     "@types/node-fetch": "^2.6.13",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
@@ -28,6 +29,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "diff": "^8.0.2",
+    "exceljs": "^4.4.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
@@ -40,6 +42,7 @@
     "react-dom": "^18",
     "sonner": "^2.0.7",
     "string-similarity": "^4.0.4",
+    "tailwind-merge": "^3.4.0",
     "xlsx": "^0.18.5",
     "zod": "^4.2.1"
   },

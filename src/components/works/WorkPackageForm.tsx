@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Edit } from "lucide-react";
 import { format } from "date-fns";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type WorkData = {
     id: string;
@@ -37,6 +38,9 @@ function WorkPackageForm({ projectId, work, onClose }: { projectId: string; work
         return result; 
     }, null);
 
+    const [startDate, setStartDate] = useState(work.startDate ? format(new Date(work.startDate), "yyyy-MM-dd") : "");
+    const [endDate, setEndDate] = useState(work.endDate ? format(new Date(work.endDate), "yyyy-MM-dd") : "");
+
     return (
         <form action={formAction} className="space-y-4">
              <div className="space-y-1">
@@ -50,28 +54,20 @@ function WorkPackageForm({ projectId, work, onClose }: { projectId: string; work
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-1">
-                    <label className="text-sm font-medium">Start Date</label>
-                    <input 
-                        name="startDate" 
-                        type="date" 
-                        className="w-full border rounded p-2" 
-                        required 
-                        defaultValue={work.startDate ? format(new Date(work.startDate), "yyyy-MM-dd") : ""}
-                        aria-label="Start Date"
-                    />
-                </div>
-                 <div className="space-y-1">
-                    <label className="text-sm font-medium">End Date</label>
-                    <input 
-                        name="endDate" 
-                        type="date" 
-                        className="w-full border rounded p-2" 
-                        required 
-                        defaultValue={work.endDate ? format(new Date(work.endDate), "yyyy-MM-dd") : ""}
-                        aria-label="End Date"
-                    />
-                </div>
+                 <DatePicker 
+                    name="startDate" 
+                    label="Start Date" 
+                    required 
+                    value={startDate}
+                    onChange={setStartDate}
+                />
+                 <DatePicker 
+                    name="endDate" 
+                    label="End Date" 
+                    required 
+                    value={endDate}
+                    onChange={setEndDate}
+                />
             </div>
 
             {state?.error && <div className="text-red-500 text-sm">{state.error}</div>}

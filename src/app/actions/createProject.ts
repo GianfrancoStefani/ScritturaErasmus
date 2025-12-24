@@ -65,10 +65,12 @@ export async function createProjectAction(formData: FormData) {
                                     orderBy: { startDate: 'asc' },
                                     include: {
                                         modules: { orderBy: { order: 'asc' } },
+                                        partners: true,
                                         tasks: {
                                             orderBy: { startDate: 'asc' },
                                             include: {
                                                 modules: { orderBy: { order: 'asc' } },
+                                                partners: true,
                                                 activities: {
                                                     orderBy: { estimatedStartDate: 'asc' },
                                                     include: {
@@ -86,10 +88,12 @@ export async function createProjectAction(formData: FormData) {
                             orderBy: { startDate: 'asc' },
                             include: {
                                 modules: { orderBy: { order: 'asc' } },
+                                partners: true,
                                 tasks: {
                                     orderBy: { startDate: 'asc' },
                                     include: {
                                         modules: { orderBy: { order: 'asc' } },
+                                        partners: true,
                                         activities: {
                                             orderBy: { estimatedStartDate: 'asc' },
                                             include: {
@@ -258,9 +262,8 @@ export async function createProjectAction(formData: FormData) {
                             });
                             await copyModules(work.modules, newWork.id, 'WORK');
                             
-                           // Clone Work Partners
-                           const workPartners = await tx.workPartner.findMany({ where: { workId: work.id } });
-                           for (const wp of workPartners) {
+                           // Clone Work Partners (using pre-fetched data)
+                           for (const wp of work.partners) {
                                if (newPartnersMap.has(wp.partnerId)) {
                                    await tx.workPartner.create({
                                        data: {
@@ -285,9 +288,8 @@ export async function createProjectAction(formData: FormData) {
                                 });
                                 await copyModules(task.modules, newTask.id, 'TASK');
 
-                                // Clone Task Partners
-                                const taskPartners = await tx.taskPartner.findMany({ where: { taskId: task.id } });
-                                for (const tp of taskPartners) {
+                                // Clone Task Partners (using pre-fetched data)
+                                for (const tp of task.partners) {
                                     if (newPartnersMap.has(tp.partnerId)) {
                                         await tx.taskPartner.create({
                                             data: {
@@ -330,9 +332,8 @@ export async function createProjectAction(formData: FormData) {
                             });
                             await copyModules(work.modules, newWork.id, 'WORK');
                             
-                             // Clone Work Partners
-                           const workPartners = await tx.workPartner.findMany({ where: { workId: work.id } });
-                           for (const wp of workPartners) {
+                             // Clone Work Partners (using pre-fetched data)
+                           for (const wp of work.partners) {
                                if (newPartnersMap.has(wp.partnerId)) {
                                    await tx.workPartner.create({
                                        data: {
@@ -357,9 +358,8 @@ export async function createProjectAction(formData: FormData) {
                                 });
                                 await copyModules(task.modules, newTask.id, 'TASK');
 
-                                 // Clone Task Partners
-                                const taskPartners = await tx.taskPartner.findMany({ where: { taskId: task.id } });
-                                for (const tp of taskPartners) {
+                                 // Clone Task Partners (using pre-fetched data)
+                                for (const tp of task.partners) {
                                     if (newPartnersMap.has(tp.partnerId)) {
                                         await tx.taskPartner.create({
                                             data: {
@@ -488,6 +488,9 @@ export async function createProjectAction(formData: FormData) {
                     }
                 }
             }
+        }, {
+            timeout: 30000,
+            maxWait: 10000
         });
 
     } catch (error) {

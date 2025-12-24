@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowLeft, Plus, Trash2, Filter, Building2 } from "lucide-react";
 import { CreateOrganizationModal } from "@/components/organizations/CreateOrganizationModal";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 // Form State Type
 export type ProjectFormState = {
@@ -36,6 +37,7 @@ function SubmitButton({ isEdit }: { isEdit: boolean }) {
 export function ProjectForm({ project, templateId, onClose, isEdit = false }: ProjectFormProps) {
     const router = useRouter();
     const [step, setStep] = useState(1);
+    const [startDate, setStartDate] = useState(project?.startDate ? format(new Date(project.startDate), 'yyyy-MM-dd') : '');
     const [templatePartners, setTemplatePartners] = useState<any[]>([]);
     
     const [availableOrgs, setAvailableOrgs] = useState<any[]>([]);
@@ -110,7 +112,7 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
 
     return (
         <>
-            <form action={formAction} className="space-y-4 relative">
+            <form action={formAction} className="space-y-4 relative" noValidate>
                 {templateId && <input type="hidden" name="templateId" value={templateId} />}
                 
                 {state?.error && (
@@ -146,12 +148,12 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
                         </div>
                         
                         <div className="grid grid-cols-2 gap-4">
-                            <Input 
+                            <DatePicker 
                                 name="startDate" 
-                                type="date" 
                                 label="Start Date" 
                                 required 
-                                defaultValue={project?.startDate ? format(new Date(project.startDate), 'yyyy-MM-dd') : ''} 
+                                value={startDate}
+                                onChange={setStartDate}
                             />
                             <Input 
                                 name="duration" 

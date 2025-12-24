@@ -18,22 +18,19 @@ export function ProjectCard({ project }: ProjectCardProps) {
     const [isEditOpen, setIsEditOpen] = useState(false);
     
     // Delete Logic
-    const [deleteStep, setDeleteStep] = useState(0); // 0: Idle, 1: Confirm
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteInput, setDeleteInput] = useState("");
 
-    const handleDelete = async (e: React.MouseEvent) => {
+    const handleDelete = async (e: React.FormEvent) => {
+        e.preventDefault();
         e.stopPropagation();
-        if (deleteStep === 0) {
-            setDeleteStep(1);
-        } else {
+        if (deleteInput === "DELETE") {
             await deleteProject(project.id);
-            setDeleteStep(0);
+            setIsDeleting(false);
+            setDeleteInput("");
         }
     };
 
-    const cancelDelete = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setDeleteStep(0);
-    }
 
     return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-all hover:border-indigo-200 hover:shadow-md">
@@ -61,43 +58,25 @@ export function ProjectCard({ project }: ProjectCardProps) {
                         {project.modules.length} Modules
                     </span>
                     
-                    {/* Actions Group - Prevent propagation to not toggle card */}
-                    <div className="flex items-center gap-1 mr-2 bg-white rounded-lg border border-slate-200 p-1">
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); setIsEditOpen(true); }}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
-                            title="Edit Project"
-                        >
-                            <Edit size={16} />
-                        </button>
-                        <div className="w-[1px] h-4 bg-slate-200 mx-0.5"></div>
-                        
-                        {deleteStep === 0 ? (
+                        {/* Actions Group - Prevent propagation to not toggle card */}
+                        <div className="flex items-center gap-1 mr-2 bg-white rounded-lg border border-slate-200 p-1">
                             <button 
-                                onClick={handleDelete}
+                                onClick={(e) => { e.stopPropagation(); setIsEditOpen(true); }}
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
+                                title="Edit Project"
+                            >
+                                <Edit size={16} />
+                            </button>
+                            <div className="w-[1px] h-4 bg-slate-200 mx-0.5"></div>
+                            
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setIsDeleting(true); }}
                                 className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
                                 title="Delete Project"
                             >
                                 <Trash2 size={16} />
                             </button>
-                        ) : (
-                             <div className="flex items-center gap-1 animate-fade-in">
-                                 <button 
-                                     onClick={handleDelete}
-                                     className="px-2 py-0.5 text-[10px] font-bold bg-red-600 text-white rounded hover:bg-red-700"
-                                 >
-                                     CONFIRM
-                                 </button>
-                                 <button 
-                                     onClick={cancelDelete}
-                                     className="p-1 text-slate-400 hover:text-slate-600"
-                                     title="Cancel"
-                                 >
-                                    X
-                                 </button>
-                             </div>
-                        )}
-                    </div>
+                        </div>
 
                     <button className="text-slate-400 hover:text-indigo-600">
                         {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -131,6 +110,44 @@ export function ProjectCard({ project }: ProjectCardProps) {
             {/* Edit Modal */}
             <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Project">
                 <ProjectForm project={project} isEdit onClose={() => setIsEditOpen(false)} />
+            </Modal>
+
+            {/* Delete Modal */}
+            <Modal isOpen={isDeleting} onClose={() => setIsDeleting(false)} title={`Delete Project: ${project.title}`}>
+                <div className="p-4 space-y-4">
+                    <p className="text-sm text-slate-600">
+                        This action is irreversible. All data associated with <span className="font-bold text-slate-800">{project.title}</span> will be permanently deleted.
+                    </p>
+                    <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-red-700 text-xs font-medium">
+                        Type <span className="font-bold underline uppercase">DELETE</span> in the box below to confirm.
+                    </div>
+                    <form onSubmit={handleDelete} className="space-y-3">
+                        <input 
+                            type="text" 
+                            value={deleteInput}
+                            onChange={(e) => setDeleteInput(e.target.value)}
+                            placeholder="Type DELETE here..."
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-mono text-sm uppercase"
+                            autoFocus
+                        />
+                        <div className="flex justify-end gap-3">
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                onClick={() => setIsDeleting(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                type="submit" 
+                                className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={deleteInput !== "DELETE"}
+                            >
+                                Permanently Delete Project
+                            </Button>
+                        </div>
+                    </form>
+                </div>
             </Modal>
         </div>
     );

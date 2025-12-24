@@ -28,7 +28,6 @@ export function WorkPackageItem({ work, projectId, partners = [], inheritedPartn
         members?: any[], 
         onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void 
     }) {
-    console.log(`[WorkPackageItem] Render ${work.title}. Modules:`, work.modules?.map((m: any) => m.title).join(', '));
     const [isOpen, setIsOpen] = useState(false); // Main WP Expand
     const [showModules, setShowModules] = useState(true); // Level 1 Modules
     const [showTasks, setShowTasks] = useState(true); // Tasks Section

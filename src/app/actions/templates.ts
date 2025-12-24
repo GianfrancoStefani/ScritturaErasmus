@@ -10,8 +10,12 @@ export async function saveProjectAsTemplate(projectId: string, templateName: str
              where: { id: projectId },
              include: {
                  partners: { orderBy: { createdAt: 'asc' } },
+                 sections: {
+                     orderBy: { order: 'asc' },
+                     include: { modules: { orderBy: { order: 'asc' } } }
+                 },
                  works: {
-                     orderBy: { startDate: 'asc' },
+                     orderBy: { order: 'asc' },
                      include: {
                          modules: { orderBy: { order: 'asc' } },
                          tasks: {
@@ -95,24 +99,27 @@ export async function saveProjectAsTemplate(projectId: string, templateName: str
 
             await cloneModules(project.modules, template.id, 'PROJECT');
 
-            // Copy Sections
-             // (Original code didn't handle sections fully, adding basic support)
-             // If the project has sections, we should clone them too to keep structure
-             // However, sticking to the existing pattern of iterating works might be safer if sections aren't critical for templates yet.
-             // But WorkPackageItem relies on them. Let's try to clone if they exist, or just clone works.
-             // The prompt implies we just need to fix PARTNER ASSIGNMENTS on works/tasks.
+            // 2.5 Clone Sections
+            const sectionsMap = new Map<string, string>();
+            for (const section of (project as any).sections || []) {
+                const newSection = await tx.section.create({
+                    data: {
+                        projectId: template.id,
+                        title: section.title,
+                        order: section.order
+                    }
+                });
+                sectionsMap.set(section.id, newSection.id);
+                await cloneModules(section.modules, newSection.id, 'SECTION');
+            }
 
+            // 3. Clone Works
             for (const work of project.works) {
                 const newWork = await tx.work.create({
                     data: {
                         projectId: template.id,
-                        sectionId: work.sectionId, // Note: This might point to old sections if we don't clone them!
-                        // FIX: We should probably NULL this for now or properly clone sections.
-                        // Given we are in "saveAsTemplate", reusing valid sectionIDs from original project is WRONG if those sections are not part of the template.
-                        // For now, let's set sectionId to null to avoid FK errors, or assume we need to clone sections first.
-                        // Let's keep it simple: Clone works as flat list or fix properly later.
-                        // User request is about PARTNERS.
-                         title: work.title,
+                        sectionId: work.sectionId ? sectionsMap.get(work.sectionId) : null,
+                        title: work.title,
                         description: work.description,
                         startDate: new Date(),
                         endDate: new Date(),
@@ -202,5 +209,43 @@ export async function getTemplatePartners(templateId: string) {
         return { success: true, data: partners };
     } catch (error) {
         return { error: "Failed to fetch template partners" };
+    }
+}
+
+export async function getTemplatePreview(templateId: string) {
+    try {
+        const template = await prisma.project.findUnique({
+            where: { id: templateId },
+            include: {
+                sections: {
+                    orderBy: { order: 'asc' },
+                    include: {
+                        modules: { orderBy: { order: 'asc' } }
+                    }
+                },
+                works: {
+                    orderBy: { order: 'asc' },
+                    include: {
+                        tasks: {
+                            orderBy: { startDate: 'asc' },
+                            include: {
+                                activities: {
+                                    orderBy: { estimatedStartDate: 'asc' },
+                                    include: {
+                                        modules: { orderBy: { order: 'asc' } }
+                                    }
+                                },
+                                modules: { orderBy: { order: 'asc' } }
+                            }
+                        },
+                        modules: { orderBy: { order: 'asc' } }
+                    }
+                },
+                modules: { orderBy: { order: 'asc' } } // root modules
+            }
+        });
+        return { success: true, data: template };
+    } catch (error) {
+        return { error: "Failed to fetch template preview" };
     }
 }

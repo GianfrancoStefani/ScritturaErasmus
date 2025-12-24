@@ -38,10 +38,8 @@ export function ProjectBoard({ project }: { project: ProjectData }) {
     const [works, setWorks] = useState(project.works || []);
 
     useEffect(() => {
-        console.log(`[ProjectBoard] Project prop updated. Sections: ${project.sections?.length}, Works: ${project.works?.length}`);
         if (project.works?.length > 0) {
              const firstWork = project.works[0];
-             console.log(`[ProjectBoard] First Work Modules Order:`, firstWork.modules?.map((m: any) => m.title).join(', '));
         }
         setSections(project.sections || []);
         setWorks(project.works || []);
@@ -221,7 +219,6 @@ export function ProjectBoard({ project }: { project: ProjectData }) {
     }
 
     const handleMoveModule = (moduleId: string, direction: 'UP' | 'DOWN') => {
-        console.log(`[ProjectBoard] handleMoveModule ${moduleId} ${direction}`);
         
         // 1. Search in Sections
         let foundInSection = false;

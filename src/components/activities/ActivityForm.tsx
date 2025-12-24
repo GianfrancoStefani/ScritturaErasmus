@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Plus, Edit } from "lucide-react";
 import { createActivity, updateActivity } from "@/app/actions/activities";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { format } from "date-fns";
 
 interface ActivityFormProps {
     parentId?: string; // If creating, the Task ID
@@ -19,6 +21,9 @@ interface ActivityFormProps {
 export function ActivityForm({ parentId, projectId, activity, partners, className }: ActivityFormProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    const [startDate, setStartDate] = useState(activity?.estimatedStartDate ? format(new Date(activity.estimatedStartDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
+    const [endDate, setEndDate] = useState(activity?.estimatedEndDate ? format(new Date(activity.estimatedEndDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
 
     const isEditing = !!activity;
 
@@ -68,21 +73,19 @@ export function ActivityForm({ parentId, projectId, activity, partners, classNam
                     />
 
                     <div className="grid grid-cols-2 gap-4">
-                        <Input 
-                            id="startDate" 
+                        <DatePicker 
                             name="estimatedStartDate" 
                             label="Start Date (Est.)"
-                            type="date" 
                             required 
-                            defaultValue={activity?.estimatedStartDate ? new Date(activity.estimatedStartDate).toISOString().split('T')[0] : today} 
+                            value={startDate}
+                            onChange={setStartDate}
                         />
-                        <Input 
-                            id="endDate" 
+                        <DatePicker 
                             name="estimatedEndDate" 
                             label="End Date (Est.)"
-                            type="date" 
                             required 
-                            defaultValue={activity?.estimatedEndDate ? new Date(activity.estimatedEndDate).toISOString().split('T')[0] : today} 
+                            value={endDate}
+                            onChange={setEndDate}
                         />
                     </div>
 

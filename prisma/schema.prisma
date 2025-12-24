@@ -28,6 +28,8 @@ model Project {
   privateOrganizations Organization[]
   timesheets     TimesheetEntry[]
   
+  versions       ProjectVersion[]
+  
   isTemplate     Boolean   @default(false)
   
   // New Setup Fields
@@ -696,3 +698,11 @@ model TimesheetEntry {
   @@index([projectId])
 }
 
+model ProjectVersion {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  data      Json     // The serialized project structure
+  createdAt DateTime @default(now())
+}

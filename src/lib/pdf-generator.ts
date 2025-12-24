@@ -1,25 +1,25 @@
 
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import html2canvas from "html2canvas";
-import { format, differenceInMonths, addMonths } from "date-fns";
-import { loadLogoBase64, hexToRgb } from "./pdf-utils";
+import { format } from "date-fns";
 
 export interface PDFConfig {
-    scope: {
-        selectedIds: string[];
-    };
     options: {
-        includeComments: boolean;
         includeCover: boolean;
-        includeTOC: boolean;
+        includePartnership: {
+            coordinator: boolean;
+            partners: boolean;
+            others: boolean;
+        };
+        includeContributions: boolean;
+        includeMetadata: boolean;
+        includeDates: boolean;
         includeBudget: boolean;
-        includeGantt: boolean;
         includeContent: boolean;
+        includeGantt?: boolean; // Reserved for future
     };
     style: {
         theme: 'modern' | 'classic' | 'minimal';
-        customTitle?: string;
     };
 }
 
@@ -39,24 +39,30 @@ export const generatePDF = async (project: any, config: PDFConfig) => {
     
     const theme = THEMES[config.style.theme];
 
-    // Helper: Add Text
-    const addText = (text: string, size: number, weight: "normal" | "bold" | "italic" = "normal", color: string = theme.text, indent: number = 0) => {
+    // Helper: Add wrapping text with page break handling
+    const addWrappedText = (text: string, size: number, weight: "normal" | "bold" | "italic" = "normal", color: string = theme.text, indent: number = 0) => {
+        if (!text) return;
         doc.setFontSize(size);
         doc.setFont(theme.font, weight);
         doc.setTextColor(color);
+        
         const lines = doc.splitTextToSize(text, contentWidth - indent);
         
-        // Check Page Break
-        if (y + lines.length * (size * 0.3527) + 5 > height - margin) {
-            doc.addPage();
-            y = margin;
-        }
-
-        doc.text(lines, margin + indent, y);
-        y += lines.length * (size * 0.4) + 2;
+        lines.forEach((line: string) => {
+            if (y + (size * 0.5) > height - margin) {
+                doc.addPage();
+                y = margin;
+                // Re-apply style after page add
+                doc.setFontSize(size);
+                doc.setFont(theme.font, weight);
+                doc.setTextColor(color);
+            }
+            doc.text(line, margin + indent, y);
+            y += (size * 0.4) + 1.5;
+        });
+        y += 1.5; // Extra space after block
     };
 
-    // Helper: Add Page Break
     const checkPageBreak = (neededHeight: number) => {
         if (y + neededHeight > height - margin) {
             doc.addPage();
@@ -66,211 +72,188 @@ export const generatePDF = async (project: any, config: PDFConfig) => {
 
     // --- 1. COVER PAGE ---
     if (config.options.includeCover) {
-        // Background Strip (Modern Theme)
         if (config.style.theme === 'modern') {
             doc.setFillColor(theme.primary);
             doc.rect(0, 0, 20, height, "F");
         }
 
-        // Logo
-        /* 
-        const logoUrl = project.logo || "/placeholder-logo.png";
-        const logoBase64 = await loadLogoBase64(logoUrl);
-        if (logoBase64) {
-             doc.addImage(logoBase64, 'PNG', width / 2 - 30, 60, 60, 60);
-        }
-        */
-
         y = height / 3;
         doc.setFont(theme.font, "bold");
         doc.setFontSize(28);
-        doc.setTextColor(config.style.theme === 'modern' ? theme.primary : "#000000");
-        doc.text(config.style.customTitle || project.title, width / 2, y, { align: "center", maxWidth: contentWidth });
-        y += 20;
+        doc.setTextColor(theme.primary);
+        doc.text(project.title, width / 2 + (config.style.theme === 'modern' ? 10 : 0), y, { align: "center", maxWidth: contentWidth });
+        y += 15;
 
         if (project.acronym) {
-            doc.setFontSize(18);
+            doc.setFontSize(20);
             doc.setTextColor(theme.secondary);
-            doc.text(`(${project.acronym})`, width / 2, y, { align: "center" });
-            y += 30;
+            doc.text(`(${project.acronym})`, width / 2 + (config.style.theme === 'modern' ? 10 : 0), y, { align: "center" });
+            y += 25;
         }
         
-        doc.setFontSize(12);
+        doc.setFontSize(14);
         doc.setFont(theme.font, "normal");
         doc.setTextColor(theme.text);
-        doc.text(`Project Duration: ${format(new Date(project.startDate), "MMM yyyy")} - ${format(new Date(project.endDate), "MMM yyyy")}`, width / 2, y, { align: "center" });
-        y += 10;
-        doc.text(`Generated: ${format(new Date(), "dd MMMM yyyy")}`, width / 2, y, { align: "center" });
+        if (config.options.includeDates && project.startDate && project.endDate) {
+            doc.text(`Project Duration: ${format(new Date(project.startDate), "MM/yyyy")} - ${format(new Date(project.endDate), "MM/yyyy")}`, width / 2, y, { align: "center" });
+            y += 10;
+        }
+        doc.text(`Generated on: ${format(new Date(), "PPpp")}`, width / 2, y, { align: "center" });
 
         doc.addPage();
         y = margin;
     }
 
-    // --- 2. BUDGET TABLE ---
-    if (config.options.includeBudget) {
-        addText("Budget Overview", 18, "bold", theme.primary);
+    // --- 2. PARTNERSHIP & TEAM ---
+    // Filter partners based on config
+    const filteredPartners = project.partners?.filter((p: any) => {
+        const role = (p.role || "").toUpperCase();
+        if (role === 'COORDINATOR') return config.options.includePartnership.coordinator;
+        if (role === 'PARTNER') return config.options.includePartnership.partners;
+        return config.options.includePartnership.others;
+    }) || [];
+
+    if (filteredPartners.length > 0) {
+        addWrappedText("1. Partnership Composition", 18, "bold", theme.primary);
         y += 5;
 
-        // Prepare Data
-        // Columns: Partner, Staff, Travel, Equipment, Other, Indirect, Total
-        // Mocking calculation logic for now (assuming project.partners has budget info or calculating from standardCosts? 
-        // Real app should pass pre-calculated stats. Using placeholders).
-        
-        const head = [["Partner", "Role", "Staff Cost", "Total Budget"]];
-        const body = project.partners?.map((p: any) => [
+        const partnerBody = filteredPartners.map((p: any) => [
             p.name,
-            p.role,
-            "€ 0.00", // Would need real calculation logic
-            p.budget ? `€ ${p.budget.toFixed(2)}` : "€ 0.00"
-        ]) || [];
+            p.role || "Partner",
+            p.nation || "-",
+            p.city || "-",
+            p.type || "-"
+        ]);
 
         autoTable(doc, {
             startY: y,
-            head: head,
-            body: body,
+            head: [["Organization", "Role", "Country", "City", "Type"]],
+            body: partnerBody,
             theme: 'grid',
             headStyles: { fillColor: theme.primary },
+            styles: { font: theme.font as any, fontSize: 9 },
+            margin: { left: margin, right: margin }
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+
+        // --- 2b. TEAM ROLES ---
+        filteredPartners.forEach((p: any) => {
+            if (p.team && p.team.length > 0) {
+                checkPageBreak(30);
+                addWrappedText(`${p.name} Team:`, 11, "bold", theme.secondary, 5);
+                p.team.forEach((m: any) => {
+                    checkPageBreak(12);
+                    addWrappedText(`• ${m.name} - ${m.role}`, 10, "normal", theme.text, 10);
+                });
+            }
+        });
+        y += 5;
+    }
+
+    // --- 3. BUDGET (If enabled) ---
+    if (config.options.includeBudget && project.partners && project.partners.length > 0) {
+        checkPageBreak(30);
+        addWrappedText("2. Budget Overview", 18, "bold", theme.primary);
+        
+        const budgetBody = project.partners.map((p: any) => [
+            p.name,
+            `€ ${p.budget?.toLocaleString() || '0'}`
+        ]);
+
+        autoTable(doc, {
+            startY: y,
+            head: [["Partner", "Allocated Budget"]],
+            body: budgetBody,
+            theme: 'striped',
+            headStyles: { fillColor: theme.secondary },
             styles: { font: theme.font as any },
             margin: { left: margin, right: margin }
         });
-
         y = (doc as any).lastAutoTable.finalY + 15;
-        checkPageBreak(20);
     }
 
-    // --- 3. GANTT CHART ---
-    if (config.options.includeGantt) {
-        addText("Project Workplan (Gantt)", 18, "bold", theme.primary);
-        y += 10;
-        
-        const startDate = new Date(project.startDate);
-        const endDate = new Date(project.endDate);
-        const totalMonths = differenceInMonths(endDate, startDate) + 1;
-        const chartWidth = contentWidth - 40; // 40 for label
-        const monthWidth = chartWidth / totalMonths;
-
-        // Draw Header
-        doc.setFontSize(8);
-        doc.setTextColor(theme.text);
-        for(let i=0; i < totalMonths; i++) {
-            const mDate = addMonths(startDate, i);
-            if (i % 3 === 0) { // Label every 3 months
-                doc.text(format(mDate, "MMM"), 60 + (i * monthWidth), y);
-            }
-        }
+    // --- 4. PROJECT CONTENT ---
+    if (config.options.includeContent) {
+        checkPageBreak(30);
+        addWrappedText("3. Project Structure & Workplan", 18, "bold", theme.primary);
         y += 5;
 
-        // Draw Bars
-        project.works?.forEach((work: any) => {
-             checkPageBreak(15);
-             if(!config.scope.selectedIds.includes(work.id)) return;
-             
-             doc.setFontSize(10);
-             doc.setTextColor(theme.primary);
-             doc.text(work.title.substring(0, 15) + "...", margin, y + 4);
-
-             const workStart = new Date(work.startDate);
-             const workEnd = new Date(work.endDate);
-             const offsetStart = differenceInMonths(workStart, startDate);
-             const duration = differenceInMonths(workEnd, workStart) + 1;
-
-             doc.setFillColor(theme.secondary);
-             doc.roundedRect(60 + (offsetStart * monthWidth), y, duration * monthWidth, 6, 1, 1, "F");
-             y += 10;
-        });
-
-        doc.addPage();
-        y = margin;
-    }
-
-    // --- 4. CONTENT (Modules) with HTML Rendering ---
-    if (config.options.includeContent) {
-        // Iterate Works -> Tasks
-        // We need an async loop for HTML rendering
-        
-        const renderModules = async (modules: any[], indent: number) => {
-             for (const mod of modules) {
-                 if (!config.scope.selectedIds.includes(mod.id)) continue;
-
-                 checkPageBreak(30);
-                 
-                 // Title
-                 doc.setFontSize(12);
-                 doc.setFont(theme.font, "bold");
-                 doc.setTextColor(theme.text);
-                 doc.text(mod.title, margin + indent, y);
-                 y += 6;
-
-                 // Content (HTML)
-                 if (mod.officialText && mod.officialText.length > 10) {
-                     // METHOD 1: doc.html implementation (Complex)
-                     // METHOD 2: html2canvas snapshot of a temporary container
-                     
-                     // We will use a mixed approach: Create a temporary div, mount it, snapshot, remove.
-                     // IMPORTANT: This runs in browser context.
-                     
-                     const div = document.createElement("div");
-                     div.innerHTML = mod.officialText;
-                     div.style.width = `${600}px`; // Fixed print width
-                     div.style.padding = "20px";
-                     div.style.fontFamily = "Arial, sans-serif";
-                     div.style.fontSize = "12px";
-                     div.style.lineHeight = "1.5";
-                     div.style.color = "#333";
-                     div.style.position = "absolute";
-                     div.style.top = "-9999px";
-                     div.style.left = "-9999px";
-                     div.style.background = "white";
-                     document.body.appendChild(div);
-
-                     try {
-                         const canvas = await html2canvas(div, { scale: 2 });
-                         const imgData = canvas.toDataURL("image/png");
-                         const imgProps = doc.getImageProperties(imgData);
-                         const pdfWidth = contentWidth - indent;
-                         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-                         // Check space
-                         checkPageBreak(pdfHeight);
-                         
-                         doc.addImage(imgData, "PNG", margin + indent, y, pdfWidth, pdfHeight);
-                         y += pdfHeight + 5;
-                     } catch(e) {
-                         console.error("HTML Render Error", e);
-                         addText("(Content Render Error)", 10, "italic", "red", indent);
-                     } finally {
-                         document.body.removeChild(div);
-                     }
-
-                 } else {
-                     addText("(No content)", 10, "italic", "#9ca3af", indent);
-                 }
-                 y += 5;
-             }
-        };
-
-        if (project.works) {
-            for (const work of project.works) {
-                if (!config.scope.selectedIds.includes(work.id)) continue;
-                
+        const renderModules = (modules: any[], indent: number) => {
+            modules.forEach(mod => {
                 checkPageBreak(25);
-                addText(`WP: ${work.title}`, 16, "bold", theme.primary);
-                y += 8;
+                // Module Title - ALWAYS SHOW
+                addWrappedText(mod.title, 12, "bold", theme.text, indent);
+                
+                // Metadata: Status and Chars
+                if (config.options.includeMetadata) {
+                    const charCount = mod.officialText ? mod.officialText.replace(/<[^>]+>/g, '').length : 0;
+                    const metaStr = `[Status: ${mod.status?.replace('_', ' ') || 'DRAFT'}] [Chars: ${charCount}${mod.maxChars ? '/' + mod.maxChars : ''}]`;
+                    addWrappedText(metaStr, 8, "italic", theme.secondary, indent + 2);
+                }
 
-                if (work.modules) await renderModules(work.modules, 0);
-
-                if (work.tasks) {
-                    for (const task of work.tasks) {
-                         if (!config.scope.selectedIds.includes(task.id)) continue;
-                         checkPageBreak(20);
-                         addText(`Task: ${task.title}`, 14, "bold", theme.secondary, 5);
-                         y += 6;
-                         if (task.modules) await renderModules(task.modules, 8);
+                // Contributions (Official Text)
+                if (config.options.includeContributions) {
+                    if (mod.officialText && mod.officialText.trim() !== "") {
+                        const plainText = mod.officialText
+                            .replace(/<p>/g, '\n')
+                            .replace(/<\/p>/g, '\n')
+                            .replace(/<br\s*\/?>/g, '\n')
+                            .replace(/<[^>]+>/g, '')
+                            .replace(/&nbsp;/g, ' ')
+                            .trim();
+                        addWrappedText(plainText, 10, "normal", theme.text, indent + 5);
+                    } else {
+                        addWrappedText("(Content pending)", 10, "italic", "#94a3b8", indent + 5);
                     }
                 }
-            }
+                y += 3;
+            });
+        };
+
+        // Top level project modules
+        if (project.modules && project.modules.length > 0) {
+            checkPageBreak(20);
+            addWrappedText("Project General Modules", 14, "bold", theme.secondary);
+            renderModules(project.modules, 5);
+        }
+
+        // Project Sections
+        project.sections?.forEach((section: any) => {
+            checkPageBreak(30);
+            addWrappedText(`Section: ${section.title}`, 16, "bold", theme.primary);
+            if (section.modules) renderModules(section.modules, 5);
+
+            section.works?.forEach((work: any) => {
+                checkPageBreak(25);
+                const dateStr = config.options.includeDates && work.startDate ? ` (${format(new Date(work.startDate), 'MM/yy')} - ${format(new Date(work.endDate), 'MM/yy')})` : "";
+                const budgetStr = config.options.includeBudget && work.budget ? ` [Budget: €${work.budget.toLocaleString()}]` : "";
+                addWrappedText(`Work Package: ${work.title}${dateStr}${budgetStr}`, 14, "bold", theme.secondary, 5);
+                if (work.modules) renderModules(work.modules, 10);
+
+                work.tasks?.forEach((task: any) => {
+                    checkPageBreak(20);
+                    const taskDateStr = config.options.includeDates && task.startDate ? ` (${format(new Date(task.startDate), 'MM/yy')} - ${format(new Date(task.endDate), 'MM/yy')})` : "";
+                    const taskBudgetStr = config.options.includeBudget && task.budget ? ` [Budget: €${task.budget.toLocaleString()}]` : "";
+                    addWrappedText(`Task: ${task.title}${taskDateStr}${taskBudgetStr}`, 12, "bold", "#475569", 10);
+                    if (task.modules) renderModules(task.modules, 15);
+                });
+            });
+        });
+
+        // Unassigned Works
+        const unassignedWorks = project.works?.filter((w: any) => !w.sectionId);
+        if (unassignedWorks && unassignedWorks.length > 0) {
+            checkPageBreak(20);
+            addWrappedText("Other Work Packages", 16, "bold", theme.primary);
+            unassignedWorks.forEach((work: any) => {
+                checkPageBreak(25);
+                const dateStr = config.options.includeDates && work.startDate ? ` (${format(new Date(work.startDate), 'MM/yy')} - ${format(new Date(work.endDate), 'MM/yy')})` : "";
+                const budgetStr = config.options.includeBudget && work.budget ? ` [Budget: €${work.budget.toLocaleString()}]` : "";
+                addWrappedText(`WP: ${work.title}${dateStr}${budgetStr}`, 14, "bold", theme.secondary, 5);
+                if (work.modules) renderModules(work.modules, 10);
+            });
         }
     }
 
-    return doc.save(`${project.acronym || 'Project'}_Export.pdf`); // Return Promise<void> effectively
+    doc.save(`${project.acronym || 'Project'}_Official_Export.pdf`);
 };
