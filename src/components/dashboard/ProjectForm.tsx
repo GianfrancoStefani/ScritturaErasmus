@@ -223,12 +223,13 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
                                             value={selectedOrgId || ""}
                                             onChange={(val) => setPartnerMapping(prev => ({ ...prev, [tp.id]: val }))}
                                             onSearch={async (q) => {
+// ... (lines 227-235 remain same) but I'm replacing the chunk
                                                 // Simple search trigger
                                                 const res = await searchOrganizations(q, 1, 50);
                                                 if(res.data) {
                                                     setAvailableOrgs(prev => {
-                                                        const existingIds = new Set(prev.map(o => o.id));
-                                                        const newOrgs = res.data.filter(o => !existingIds.has(o.id));
+                                                        const existingIds = new Set(prev.map((o: any) => o.id));
+                                                        const newOrgs = res.data.filter((o: any) => !existingIds.has(o.id));
                                                         return [...prev, ...newOrgs];
                                                     });
                                                 }
@@ -275,8 +276,8 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
                                                  const res = await searchOrganizations(q, 1, 50);
                                                  if(res.data) {
                                                      setAvailableOrgs(prev => {
-                                                         const existingIds = new Set(prev.map(o => o.id));
-                                                         const newOrgs = res.data.filter(o => !existingIds.has(o.id));
+                                                         const existingIds = new Set(prev.map((o: any) => o.id));
+                                                         const newOrgs = res.data.filter((o: any) => !existingIds.has(o.id));
                                                          return [...prev, ...newOrgs];
                                                      });
                                                  }
