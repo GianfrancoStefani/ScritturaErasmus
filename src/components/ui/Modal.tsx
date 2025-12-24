@@ -35,6 +35,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
           <h2 className="text-xl font-bold text-slate-900">{title}</h2>
           <button 
             onClick={onClose}
+            title="Close Modal"
             className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             <X size={24} />

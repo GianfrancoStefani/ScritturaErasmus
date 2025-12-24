@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getProjectMembers } from "@/app/actions/project";
-import { assignUser, removeAssignment, getAssignments } from "@/app/actions/assignments";
+import { assignUser, deleteAssignment, getAssignments } from "@/app/actions/assignments";
 import { checkWorkloadAction } from "@/app/actions/workloadActions"; 
 import { Loader2, AlertTriangle, Trash2, Plus, Ban, Briefcase } from "lucide-react";
 import { toast } from "sonner";
@@ -68,7 +68,7 @@ export function AssignmentManager({ entityId, entityType, projectId, partners = 
 
     async function handleRemove(id: string) {
         if(!confirm("Remove assignment?")) return;
-        await removeAssignment(id);
+        await deleteAssignment(id, projectId); // Pass projectId for revalidation benefit
         loadData();
     }
 

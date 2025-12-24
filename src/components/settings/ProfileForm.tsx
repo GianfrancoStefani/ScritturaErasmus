@@ -22,7 +22,8 @@ export function ProfileForm({ user }: { user: any }) {
         surname: user.surname || "",
         username: user.username || "",
         email: user.email || "",
-        phone: user.phone || ""
+        phone: user.phone || "",
+        motherTongue: user.motherTongue || ""
     });
     
     const [isSaving, setIsSaving] = useState(false);
@@ -146,6 +147,57 @@ export function ProfileForm({ user }: { user: any }) {
                                      <MapPin size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                  </div>
                              </div>
+                         </div>
+
+                         <div>
+                             <label className="text-xs font-semibold text-slate-500 mb-1 block">Mother Language</label>
+                             <select 
+                                aria-label="Mother Language"
+                                className="w-full border border-slate-200 rounded px-3 py-2 text-sm bg-white"
+                                value={data.motherTongue}
+                                onChange={(e) => setData({...data, motherTongue: e.target.value})}
+                             >
+                                 <option value="">Select Language</option>
+                                 <option value="Azərbaycan dili">Azərbaycan dili</option>
+                                 <option value="Bosanski jezik">Bosanski jezik</option>
+                                 <option value="Català">Català</option>
+                                 <option value="Čeština">Čeština</option>
+                                 <option value="Crnogorski jezik">Crnogorski jezik</option>
+                                 <option value="Dansk">Dansk</option>
+                                 <option value="Deutsch">Deutsch</option>
+                                 <option value="Eesti keel">Eesti keel</option>
+                                 <option value="English">English</option>
+                                 <option value="Español">Español</option>
+                                 <option value="Français">Français</option>
+                                 <option value="Gaeilge">Gaeilge</option>
+                                 <option value="Hrvatski jezik">Hrvatski jezik</option>
+                                 <option value="Íslenska">Íslenska</option>
+                                 <option value="Italiano">Italiano</option>
+                                 <option value="Latviešu valoda">Latviešu valoda</option>
+                                 <option value="Lëtzebuergesch">Lëtzebuergesch</option>
+                                 <option value="Lietuvių kalba">Lietuvių kalba</option>
+                                 <option value="Magyar">Magyar</option>
+                                 <option value="Malti">Malti</option>
+                                 <option value="Nederlands">Nederlands</option>
+                                 <option value="Norsk">Norsk</option>
+                                 <option value="Polski">Polski</option>
+                                 <option value="Português">Português</option>
+                                 <option value="Română">Română</option>
+                                 <option value="Slovenčina">Slovenčina</option>
+                                 <option value="Slovenščina">Slovenščina</option>
+                                 <option value="Suomi">Suomi</option>
+                                 <option value="Svenska">Svenska</option>
+                                 <option value="Türkçe">Türkçe</option>
+                                 <option value="Ελληνικά">Ελληνικά</option>
+                                 <option value="Беларуская мова">Беларуская мова</option>
+                                 <option value="Български език">Български език</option>
+                                 <option value="Македонски јазик">Македонски јазик</option>
+                                 <option value="Русский язык">Русский язык</option>
+                                 <option value="Српски језик">Српски језик</option>
+                                 <option value="Українська мова">Українська мова</option>
+                                 <option value="ქართული ენა">ქართული ენა</option>
+                             </select>
+                             <p className="text-[10px] text-slate-400 mt-1">Used for automatic translation features.</p>
                          </div>
                     </div>
                 </div>

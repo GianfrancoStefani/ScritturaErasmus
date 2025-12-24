@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 const ToolbarButton = ({ onClick, isActive = false, children }: any) => (
     <button
         type="button"
+        title="Toolbar Button"
         onClick={onClick}
         className={clsx("p-1.5 rounded hover:bg-slate-100 transition-colors text-slate-500", isActive && "bg-slate-200 text-slate-900")}
     >
@@ -42,7 +43,7 @@ export function ContributionEditor({ onSubmit, onCancel }: { onSubmit: (html: st
                 <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive('italic')}><Italic size={16} /></ToolbarButton>
                 <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive('bulletList')}><List size={16} /></ToolbarButton>
                 <div className="flex-1" />
-                <button onClick={onCancel} className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600"><X size={16} /></button>
+                <button onClick={onCancel} title="Cancel" className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600"><X size={16} /></button>
             </div>
             <EditorContent editor={editor} />
             <div className="p-2 border-t flex justify-end">

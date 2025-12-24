@@ -6,11 +6,15 @@ import { revalidatePath } from "next/cache";
 interface AssignParams {
     userId: string;
     days: number;
-    months: string[];
+    months: string[]; // JSON string? interface says string[] but DB stores string. Let's align. The form sends JSON string.
+    // Actually the interface says string[], but prisma expects string? 
+    // In current create: months: JSON.stringify(params.months) -> implies params.months is object/array.
+    dailyRate?: number;
     taskId?: string;
     workId?: string;
     sectionId?: string;
     activityId?: string;
+    projectId?: string; // For revalidation
 }
 
 export async function assignUser(params: AssignParams) {
@@ -19,8 +23,8 @@ export async function assignUser(params: AssignParams) {
             data: {
                 userId: params.userId,
                 days: params.days,
-                months: JSON.stringify(params.months),
-                dailyRate: 0,
+                months: typeof params.months === 'string' ? params.months : JSON.stringify(params.months),
+                dailyRate: params.dailyRate || 0,
                 // Optional links
                 taskId: params.taskId,
                 workId: params.workId,
@@ -28,6 +32,10 @@ export async function assignUser(params: AssignParams) {
                 activityId: params.activityId
             }
         });
+        
+        if (params.projectId) {
+             revalidatePath(`/dashboard/projects/${params.projectId}`);
+        }
         return { success: true };
     } catch (error) {
         console.error("Failed to assign user:", error);
@@ -35,9 +43,12 @@ export async function assignUser(params: AssignParams) {
     }
 }
 
-export async function removeAssignment(assignmentId: string) {
+export async function deleteAssignment(assignmentId: string, projectId?: string) {
     try {
         await prisma.assignment.delete({ where: { id: assignmentId } });
+        if (projectId) {
+            revalidatePath(`/dashboard/projects/${projectId}`);
+        }
         return { success: true };
     } catch (error) {
         return { error: "Failed to remove assignment" };

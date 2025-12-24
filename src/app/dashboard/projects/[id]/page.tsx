@@ -288,7 +288,14 @@ function ModuleCard({ module, projectId }: { module: any, projectId: string }) {
                     </div>
                 </div>
                 <h4 className="font-bold text-slate-800 line-clamp-1 pr-6">{module.title}</h4>
-                <p className="text-xs text-slate-400 line-clamp-2 mt-1 mb-4 flex-1">{module.subtitle || "No subtitle"}</p>
+                <div className="flex flex-wrap gap-1 mt-1 mb-2">
+                    {module.officialText && (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 rounded font-medium border border-emerald-200 w-fit">
+                            Official Text
+                        </span>
+                    )}
+                </div>
+                <p className="text-xs text-slate-400 line-clamp-2 mb-4 flex-1">{module.subtitle || "No subtitle"}</p>
                 
                 <div className="mt-auto space-y-3 pt-3 border-t border-slate-100">
                     {/* Progress Bar */}
@@ -338,6 +345,11 @@ function ModuleRow({ module, projectId }: { module: any, projectId: string }) {
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-slate-800 truncate">{module.title}</p>
                         <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded">{module.completion}%</span>
+                        {module.officialText && (
+                            <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 rounded font-medium border border-emerald-200">
+                                Official Text
+                            </span>
+                        )}
                     </div>
                    {module.subtitle && <p className="text-xs text-slate-400 truncate">{module.subtitle}</p>}
                 </Link>

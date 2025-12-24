@@ -24,7 +24,9 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
             },
             components: {
                 include: { 
-                    author: true,
+                    author: {
+                        include: { partner: true }
+                    },
                     comments: { include: { user: true }, orderBy: { createdAt: 'asc' } },
                     ratings: true
                 },
@@ -67,6 +69,8 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
         }
     });
     const userRole = memberRecord?.role || null;
+    
+    const isReadOnly = moduleData.commentEndingDate ? new Date() > new Date(moduleData.commentEndingDate) : false;
 
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)]">
@@ -114,9 +118,8 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
                         components={moduleData.components}
                         currentUserId={currentUserId}
                         isManager={isManager}
-                        // TODO: Pass readOnly or similar if deadline passed. 
-                        // Assuming the user handles enforcing this logic in ContributionStream or via specific prop.
-                        // For now, I will just display the stream as is.
+                        readOnly={isReadOnly}
+                        motherTongue={mockUser?.motherTongue || "en"}
                     />
                 </div>
 
@@ -147,6 +150,7 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
                             partners={moduleData.project?.partners || []}
                             currentUser={mockUser}
                             initialVersions={moduleData.versions}
+                            characterLimit={moduleData.maxCharacters || 3000} // Mock limit if not present in schema yet
                         />
                      </div>
                 </div>

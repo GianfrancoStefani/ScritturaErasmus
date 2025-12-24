@@ -44,6 +44,27 @@ export async function deleteAnnotation(id: string) {
   }
 }
 
+export async function deleteAllUserAnnotations(moduleId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  try {
+    await prisma.textComponent.deleteMany({
+      where: { 
+        moduleId,
+        authorId: session.user.id,
+        type: "ANNOTATION"
+      }
+    });
+
+    revalidatePath(`/dashboard/projects/[id]/preview`, 'page');
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete all annotations:", error);
+    return { error: "Failed to delete all annotations" };
+  }
+}
+
 export async function saveModuleContent(moduleId: string, content: string) {
   try {
     await prisma.module.update({
@@ -104,4 +125,40 @@ export async function saveUserNote(moduleId: string, content: string) {
     console.error("Failed to save note:", error);
     return { error: "Failed to save note" };
   }
+}
+
+export async function saveAnnotatedVersion(moduleId: string, annotations: any[]) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: "Unauthorized" };
+
+    try {
+        const moduleData = await prisma.module.findUnique({
+            where: { id: moduleId },
+            select: { officialText: true }
+        });
+
+        if (!moduleData) return { error: "Module not found" };
+
+        // Create version name
+        const date = new Date();
+        const formattedDate = date.toLocaleDateString('it-IT');
+        const formattedTime = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const versionName = `${session.user.name || 'User'} - ${formattedDate} ${formattedTime} (Annotated Version)`;
+
+        await prisma.moduleVersion.create({
+            data: {
+                moduleId,
+                content: moduleData.officialText || "",
+                isAnnotated: true,
+                annotations: JSON.stringify(annotations),
+                name: versionName
+            }
+        });
+
+        revalidatePath(`/dashboard/projects/[id]/modules/${moduleId}`, 'page');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to save annotated version:", error);
+        return { error: "Failed to save annotated version" };
+    }
 }

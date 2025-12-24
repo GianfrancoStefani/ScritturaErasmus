@@ -59,17 +59,28 @@ export function AssignmentForm({
     const calculatedTotalDays = Object.values(monthDays).reduce((a, b) => a + Number(b), 0);
 
     const [state, formAction] = useFormState(async (prevState: any, formData: FormData) => {
-         // Inject the JSON string for months
-         formData.set('months', JSON.stringify(monthDays));
-         // Ensure days is set from calc if not manually overridden (we'll enforce calc)
-         formData.set('days', calculatedTotalDays.toString());
-         
-         const result = await assignUser(formData);
-         if (result?.success) {
-             onClose();
-             return { message: "Success" };
+         try {
+             const result = await assignUser({
+                userId: formData.get('userId') as string,
+                days: Number(calculatedTotalDays), // Use the calculated state directly as source of truth
+                months: monthDays as any, // backend handles string or object
+                taskId: taskId,
+                dailyRate: Number(formData.get('dailyRate') || 0),
+                // We might need projectId here for revalidation, but it's not in props?
+                // It is in props of List, but not passed to Form?
+                // Form receives taskId... we can define projectId if needed or rely on parent revalidation?
+                // Let's check props.
+             });
+             
+             if (result?.success) {
+                 onClose();
+                 // Hack to ensure refresh if server action revalidate didn't catch specific path (or just standard form behavior)
+                 return { message: "Success" };
+             }
+             return result;
+         } catch (e) {
+             return { error: "Error submitting form" };
          }
-         return result;
     }, null);
 
     // Generate next 24 months for selection options (or based on project dates ideally, but generic for now)
@@ -131,6 +142,7 @@ export function AssignmentForm({
                 <div className="space-y-1">
                     <label className="text-sm font-medium">Organization</label>
                     <select 
+                        title="Select Organization"
                         className="w-full border rounded p-2" 
                         value={selectedPartnerId}
                         onChange={(e) => setSelectedPartnerId(e.target.value)}
@@ -145,6 +157,7 @@ export function AssignmentForm({
                      <label className="text-sm font-medium">User</label>
                      <select 
                         name="userId" 
+                        title="Select User"
                         className="w-full border rounded p-2"
                         defaultValue={initialData?.user.id}
                         disabled={!!initialData}
@@ -191,6 +204,8 @@ export function AssignmentForm({
                                         type="number" 
                                         min="0"
                                         step="0.5"
+                                        title={`Days for ${month}`}
+                                        placeholder="0"
                                         value={monthDays[month]}
                                         onChange={(e) => updateMonthDays(month, e.target.value)}
                                         className="w-16 border rounded p-1 text-right"
@@ -217,6 +232,8 @@ export function AssignmentForm({
                         name="dailyRate" 
                         type="number" 
                         step="0.01" 
+                        title="Daily Rate"
+                        placeholder="0.00"
                         className="w-full border rounded p-2" 
                         defaultValue={initialData?.dailyRate || 0}
                     />

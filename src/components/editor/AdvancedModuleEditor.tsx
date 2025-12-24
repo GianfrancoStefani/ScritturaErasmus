@@ -17,13 +17,14 @@ interface AdvancedModuleEditorProps {
     partners: any[];
     currentUser: any;
     initialVersions: any[];
+    characterLimit?: number;
 }
 
-export default function AdvancedModuleEditor({ module, partners, currentUser, initialVersions }: AdvancedModuleEditorProps) {
+export default function AdvancedModuleEditor({ module, partners, currentUser, initialVersions, characterLimit }: AdvancedModuleEditorProps) {
     const [versions, setVersions] = useState<any[]>(initialVersions);
     const [showHistory, setShowHistory] = useState(false);
     const [showTranslate, setShowTranslate] = useState(false);
-    const [selectedLanguage, setSelectedLanguage] = useState("");
+    const [selectedLanguage, setSelectedLanguage] = useState(currentUser?.motherTongue || "");
     const [currentContent, setCurrentContent] = useState(module.officialText || "");
     
     // Diff logic
@@ -103,6 +104,10 @@ export default function AdvancedModuleEditor({ module, partners, currentUser, in
                      </Button>
                 </div>
                 <div>
+                     <span className="text-xs text-slate-500 mr-4 font-mono">
+                        {currentContent.replace(/<[^>]*>?/gm, '').length} / {module.maxCharacters || 3000} chars 
+                        ({Math.round((currentContent.replace(/<[^>]*>?/gm, '').length / (module.maxCharacters || 3000)) * 100)}%)
+                     </span>
                      <Button size="sm" onClick={handleSaveVersion} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                         <Save size={16} className="mr-1" /> Save Version
                      </Button>

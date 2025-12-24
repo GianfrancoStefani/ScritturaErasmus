@@ -69,7 +69,7 @@ async function getFullProject(id: string) {
       modules: { 
         where: { sectionId: null, workId: null, taskId: null, activityId: null }, 
         orderBy: { order: 'asc' },
-        include: moduleInclude
+        ...moduleInclude
       }
     }
   });
@@ -82,9 +82,11 @@ export default async function ProjectPreviewPage({ params }: { params: { id: str
   const project = await getFullProject(params.id);
   if (!project) notFound();
 
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+
   return (
     <div className="min-h-screen bg-white">
-      <ProjectPreviewController project={project} />
+      <ProjectPreviewController project={project} currentUser={user} />
     </div>
   );
 }

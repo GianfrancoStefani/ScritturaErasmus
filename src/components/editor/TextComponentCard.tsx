@@ -15,10 +15,11 @@ type ExtendedTextComponent = TextComponent & {
     ratings: Rating[];
 };
 
-export function TextComponentCard({ component, currentUserId, isManager }: { 
+export function TextComponentCard({ component, currentUserId, isManager, motherTongue }: { 
     component: ExtendedTextComponent, 
     currentUserId: string,
-    isManager: boolean
+    isManager: boolean,
+    motherTongue: string
 }) {
     const router = useRouter();
     const isAuthor = component.authorId === currentUserId;
@@ -27,6 +28,13 @@ export function TextComponentCard({ component, currentUserId, isManager }: {
     const [commentText, setCommentText] = useState("");
     const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+
+    // Mock Translation Logic
+    const handleTranslate = () => {
+        // Mock translation - in a real app this would call an API
+        const targetLang = motherTongue || "en";
+        alert(`[Mock Translation System]:\n\nTranslating content to ${targetLang}...\n\n(This feature is ready to be connected to an AI translation API like DeepL or OpenAI)`);
+    };
 
     const {
         attributes,
@@ -42,8 +50,8 @@ export function TextComponentCard({ component, currentUserId, isManager }: {
         transition,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 50 : "auto",
-        position: isDragging ? "relative" as const : undefined, // Cast to const to satisfy type check
-    };
+        position: isDragging ? "relative" as const : undefined, 
+    } as React.CSSProperties;
 
     // Calculate rating
     const userRating = component.ratings.find(r => r.userId === currentUserId)?.value || 0;
@@ -94,13 +102,14 @@ export function TextComponentCard({ component, currentUserId, isManager }: {
         >
             <div className="flex items-center p-2 border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                  {/* Drag Handle */}
-                 <button className="p-1 text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing mr-1" {...attributes} {...listeners}>
+                 <button className="p-1 text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing mr-1" title="Drag to reorder" {...attributes} {...listeners}>
                     <GripVertical size={16} />
                 </button>
 
                 {/* Collapser */}
                 <button 
                     onClick={() => setIsCollapsed(!isCollapsed)}
+                    title={isCollapsed ? "Expand" : "Collapse"}
                     className="p-1 text-slate-400 hover:text-slate-600 mr-2"
                 >
                     {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
@@ -157,6 +166,7 @@ export function TextComponentCard({ component, currentUserId, isManager }: {
                                     "flex items-center gap-1 text-xs hover:text-slate-900 transition-colors",
                                     (showComments || component.comments.length > 0) ? "text-indigo-600 font-medium" : "text-slate-400"
                                 )}
+                                title="Toggle Comments"
                             >
                                 <MessageSquare size={14} /> 
                                 {component.comments.length > 0 ? `${component.comments.length} Comments` : "Comment"}
@@ -168,6 +178,7 @@ export function TextComponentCard({ component, currentUserId, isManager }: {
                                         key={star}
                                         onClick={() => handleRate(star)}
                                         className="focus:outline-none"
+                                        title={`Rate ${star} stars`}
                                     >
                                         <Star 
                                             size={14} 
@@ -193,6 +204,10 @@ export function TextComponentCard({ component, currentUserId, isManager }: {
                                     <ArrowUpRight size={14} /> Merge
                                 </Button>
                             )}
+
+                            <Button size="sm" variant="ghost" onClick={handleTranslate} className="h-7 text-xs gap-1 text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-slate-200" title={`Translate to ${motherTongue}`}>
+                                 Translate
+                            </Button>
                         </div>
                     </div>
 

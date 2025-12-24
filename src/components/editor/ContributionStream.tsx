@@ -26,12 +26,16 @@ export function ContributionStream({
     moduleId, 
     components, 
     currentUserId,
-    isManager 
+    isManager,
+    readOnly = false,
+    motherTongue
 }: { 
     moduleId: string; 
     components: any[]; 
     currentUserId: string;
     isManager: boolean;
+    readOnly?: boolean;
+    motherTongue: string;
 }) {
     const [isWriting, setIsWriting] = useState(false);
     const [isPending, startTransition] = useTransition();
@@ -89,7 +93,7 @@ export function ContributionStream({
         <div className="flex flex-col h-full bg-slate-50/50">
             <div className="p-4 border-b bg-white/50 backdrop-blur sticky top-0 z-10 flex justify-between items-center">
                 <h3 className="font-semibold text-slate-800">Contributions</h3>
-                {!isWriting && (
+                {!isWriting && !readOnly && (
                     <Button size="sm" onClick={() => setIsWriting(true)}>
                         <Plus size={16} className="mr-1" /> Add
                     </Button>
@@ -126,6 +130,7 @@ export function ContributionStream({
                                 component={comp} 
                                 currentUserId={currentUserId}
                                 isManager={isManager}
+                                motherTongue={motherTongue}
                             />
                         ))}
                     </SortableContext>

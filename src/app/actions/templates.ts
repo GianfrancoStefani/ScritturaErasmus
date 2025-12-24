@@ -86,6 +86,10 @@ export async function saveProjectAsTemplate(projectId: string, templateName: str
                             order: m.order,
                             maxChars: m.maxChars,
                             guidelines: m.guidelines,
+                            type: m.type,
+                            options: m.options,
+                            maxSelections: m.maxSelections,
+                            officialText: m.officialText, // Clone content as template text
                             status: "TO_DONE",
                             projectId: parentType === 'PROJECT' ? parentId : undefined,
                             sectionId: parentType === 'SECTION' ? parentId : undefined,

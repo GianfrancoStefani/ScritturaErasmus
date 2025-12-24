@@ -98,10 +98,10 @@ export function AssignmentList({
                         </div>
                         
                         <div className="flex items-center gap-2">
-                            <button onClick={() => handleEdit(assignment)} className="p-2 text-slate-400 hover:text-indigo-600">
+                            <button onClick={() => handleEdit(assignment)} className="p-2 text-slate-400 hover:text-indigo-600" title="Edit Assignment">
                                 <Edit2 size={16} />
                             </button>
-                            <button onClick={() => handleDelete(assignment.id)} className="p-2 text-slate-400 hover:text-red-600">
+                            <button onClick={() => handleDelete(assignment.id)} className="p-2 text-slate-400 hover:text-red-600" title="Delete Assignment">
                                 <Trash2 size={16} />
                             </button>
                         </div>

@@ -378,6 +378,8 @@ model ModuleVersion {
   moduleId  String
   module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   content   String   // The official text at this version
+  isAnnotated Boolean @default(false)
+  annotations Json?   // Snapshot of annotations at this version
   createdAt DateTime @default(now())
 }
 
@@ -554,7 +556,7 @@ model ProjectMember {
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
   
-  role         String   // Project-specific role (e.g. Coordinator, Partner)
+  roles        String[] @default(["USER"]) // Project-specific roles
   
   // Cost & Profile Overrides
   customDailyRate Float? 
@@ -615,7 +617,7 @@ model Invitation {
   status    String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED
   
   // Optional: Pre-assigned role or partner
-  role      String?
+  roles     String[]
   partnerId String?
   partner   Partner? @relation(fields: [partnerId], references: [id])
   
