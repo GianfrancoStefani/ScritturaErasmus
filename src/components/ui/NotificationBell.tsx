@@ -27,10 +27,15 @@ export function NotificationBell({ userId }: { userId: string }) {
     const fetchNotifications = async () => {
         if (!userId) return;
         setLoading(true);
-        const res = await getNotifications(userId);
-        if (res.success && res.data) {
-            setNotifications(res.data);
-            setUnreadCount(res.data.filter((n: any) => !n.read).length);
+        try {
+            const res = await getNotifications(userId);
+            if (res.success && res.data) {
+                setNotifications(res.data);
+                setUnreadCount(res.data.filter((n: any) => !n.read).length);
+            }
+        } catch (error) {
+            console.error("Failed to fetch notifications:", error);
+            // Non-critical error, suppressing toast to avoid spam
         }
         setLoading(false);
     };

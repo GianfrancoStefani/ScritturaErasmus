@@ -25,10 +25,6 @@ export async function Header() {
         />
       </div>
 
-
-
-// ...
-
       {/* Right Section */}
       <div className="flex items-center gap-4">
         {user?.id && <NotificationBell userId={user.id} />}
@@ -41,8 +37,16 @@ export async function Header() {
                 <p className="text-sm font-medium text-slate-700">{user?.name || 'Guest User'}</p>
                 <p className="text-xs text-slate-500">{user?.email || 'Coordinator'}</p>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 font-bold">
-                {initials}
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${user?.image ? 'overflow-hidden' : 'bg-indigo-100 text-indigo-600 font-bold'}`}>
+                {user?.image ? (
+                    <img 
+                        src={user.image} 
+                        alt="Profile" 
+                        className="h-full w-full object-cover"
+                    />
+                ) : (
+                    initials
+                )}
             </div>
           </Link>
           

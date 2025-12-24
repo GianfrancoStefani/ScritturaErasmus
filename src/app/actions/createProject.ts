@@ -5,7 +5,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 
-export async function createProject(formData: FormData) {
+import { auth } from "@/auth";
+
+
+export async function createProjectAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
   const title = formData.get("title") as string;
   const acronym = formData.get("acronym") as string;
   const startDate = new Date(formData.get("startDate") as string);
@@ -14,6 +22,8 @@ export async function createProject(formData: FormData) {
   const language = formData.get("language") as string;
   
     const templateId = formData.get("templateId") as string;
+    
+    let coordinatorPartnerId: string | null = null;
     const partnerMappingRaw = formData.get("partnerMapping") as string;
     const partnerMapping = partnerMappingRaw ? JSON.parse(partnerMappingRaw) : {};
     
@@ -99,9 +109,9 @@ export async function createProject(formData: FormData) {
 
                 if (template) {
                     // MAP PARTNERS
-                    const newPartnersMap = new Map<string, string>(); // TemplatePartnerID -> NewProjectPartnerID
+                    // ... (inside template block)
+                    const newPartnersMap = new Map<string, string>(); 
 
-                    // Fetch all mapped organizations in one go if possible, or loop. Loop is fine for small count.
                     for (const tp of template.partners) {
                         const mappedOrgId = partnerMapping[tp.id];
                         let newPartnerId;
@@ -113,7 +123,7 @@ export async function createProject(formData: FormData) {
                                 const newP = await tx.partner.create({
                                     data: {
                                         projectId: project.id,
-                                        organization: { connect: { id: org.id } }, // FIX: Relational connect
+                                        organizationId: org.id,
                                         name: org.name,
                                         nation: org.nation || "IT",
                                         city: org.city || "City",
@@ -157,7 +167,21 @@ export async function createProject(formData: FormData) {
                             newPartnerId = newP.id;
                         }
                         newPartnersMap.set(tp.id, newPartnerId);
+
+                        // Capture Coordinator Partner ID
+                        // Priority 1: Explicit COORDINATOR role
+                        if (tp.role === 'COORDINATOR') {
+                            coordinatorPartnerId = newPartnerId;
+                        } 
+                        // Priority 2: Use the first partner as fallback if none set yet
+                        else if (!coordinatorPartnerId) {
+                            coordinatorPartnerId = newPartnerId;
+                        }
                     }
+                    console.log("[CreateProject] CoordinatorPartnerId:", coordinatorPartnerId);
+                    console.log("[CreateProject] Session User ID:", session?.user?.id);
+
+
 
                     // CREATE EXTRA PARTNERS
                     if (extraPartners && extraPartners.length > 0) {
@@ -167,7 +191,7 @@ export async function createProject(formData: FormData) {
                                 await tx.partner.create({
                                     data: {
                                         projectId: project.id,
-                                        organization: { connect: { id: org.id } },
+                                        organizationId: org.id,
                                         name: org.name,
                                         nation: org.nation || "IT",
                                         city: org.city || "City",
@@ -394,11 +418,81 @@ export async function createProject(formData: FormData) {
                     }
                 });
             }
+
+            // --- CATCH-ALL: Ensure Creator is a Project Member ---
+            if (session?.user?.id) {
+                // Check if already a member
+                const membership = await tx.projectMember.findFirst({
+                    where: { projectId: project.id, userId: session.user.id }
+                });
+
+                if (!membership) {
+                    console.log("[CreateProject] No membership found. Catch-all creating one.");
+                    // Find a suitable partner (Coordinator or first one)
+                    let memberPartnerId = coordinatorPartnerId;
+                    
+                    if (!memberPartnerId) {
+                         const firstPartner = await tx.partner.findFirst({
+                            where: { projectId: project.id }
+                         });
+                         if (firstPartner) {
+                             memberPartnerId = firstPartner.id;
+                         } else {
+                             // CRITICAL FIX: If NO partners exist (e.g. no template), create a placeholder "Applicant" partner
+                             // Check if user has a personal organization/affiliation to use? 
+                             // For now, create a generic one to satisfy the schema constraints.
+                             console.log("[CreateProject] No partners found. Creating default Applicant partner.");
+                             const defaultPartner = await tx.partner.create({
+                                 data: {
+                                     projectId: project.id,
+                                     name: "Applicant Organisation",
+                                     nation: nationalAgency.substring(0, 2) || "IT", // Guess from NA
+                                     city: "Headquarters",
+                                     type: "NGO",
+                                     role: "COORDINATOR",
+                                     budget: 0
+                                 }
+                             });
+                             memberPartnerId = defaultPartner.id;
+                         }
+                    }
+
+                    if (memberPartnerId) {
+                         // Check affiliation
+                         const partner = await tx.partner.findUnique({ where: { id: memberPartnerId } });
+                         let affiliationId = null;
+                        
+                         if (partner?.organizationId) {
+                            const affiliation = await tx.userAffiliation.findFirst({
+                                where: { 
+                                    userId: session.user.id,
+                                    organizationId: partner.organizationId
+                                }
+                            });
+                            affiliationId = affiliation?.id;
+                         }
+
+                         await tx.projectMember.create({
+                            data: {
+                                projectId: project.id,
+                                userId: session.user.id,
+                                partnerId: memberPartnerId,
+                                role: "COORDINATOR",
+                                projectRole: "Project Coordinator",
+                                userAffiliationId: affiliationId
+                            }
+                        });
+                        console.log("[CreateProject] Membership forcefully created via Catch-All.");
+                    } else {
+                        console.error("[CreateProject] CRITICAL: Could not create membership. No partners found for project.");
+                    }
+                }
+            }
         });
 
     } catch (error) {
-        console.error("Failed to create project:", error);
-        return { error: "Failed to create project" };
+        console.error("Failed to create project - ERROR DETAILS:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        return { error: `Failed to create project: ${error}` };
     }
   
   revalidatePath("/dashboard");

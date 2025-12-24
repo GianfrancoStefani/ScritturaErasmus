@@ -1,6 +1,6 @@
 "use client";
 
-import { createProject } from "@/app/actions/createProject";
+import { createProjectAction } from "@/app/actions/createProject";
 import { updateProjectMetadata } from "@/app/actions/updateProject";
 import { getTemplatePartners } from "@/app/actions/templates";
 import { searchOrganizations } from "@/app/actions/organizations"; 
@@ -84,8 +84,8 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
                 formData.set("partnerMapping", JSON.stringify(partnerMapping));
                 formData.set("extraPartners", JSON.stringify(extraPartners));
              }
-             await createProject(formData);
-             return { success: true };
+             const result = await createProjectAction(formData);
+             return result || { success: true };
         }
     }, null);
 
@@ -119,8 +119,7 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
                     </div>
                 )}
 
-                {step === 1 && (
-                    <>
+                <div className={step === 1 ? "space-y-4" : "hidden"}>
                         <Input 
                             name="title" 
                             label="Project Title" 
@@ -172,8 +171,7 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
                             placeholder="English" 
                             defaultValue={project?.language || "English"} 
                         />
-                    </>
-                )}
+                </div>
 
                 {step === 2 && templateId && (
                     <div className="space-y-4">
@@ -203,12 +201,12 @@ export function ProjectForm({ project, templateId, onClose, isEdit = false }: Pr
                             <span className="text-xs text-slate-400 ml-auto">{filteredOrgs.length} available</span>
                         </div>
 
-                        <div className="space-y-3 max-h-[400px] overflow-visible pr-1">
+                        <div className="space-y-3 pr-1">
                             {/* Template Partners Mapping */}
                             {templatePartners.map((tp, idx) => {
                                 const selectedOrgId = partnerMapping[tp.id];
                                 return (
-                                    <div key={tp.id} className="p-3 border rounded bg-slate-50 relative z-20">
+                                    <div key={tp.id} className="p-3 border rounded bg-slate-50 relative">
                                         <label className="block text-xs font-bold text-slate-700 mb-1 flex justify-between">
                                             <span>{tp.role === 'COORDINATOR' ? "Coordinator (Applicant)" : tp.name} <span className="text-slate-400 font-normal">({tp.type})</span></span>
                                             {selectedOrgId && <span className="text-green-600">Mapped</span>}

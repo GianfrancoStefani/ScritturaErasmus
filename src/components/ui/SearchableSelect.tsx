@@ -51,9 +51,10 @@ export function SearchableSelect({ options, value, onChange, placeholder = "Sele
     // Usually better to keep empty or sync with selected label but that's complex for async.
     // For now, simple text filter.
 
-    const filteredOptions = onSearch 
-        ? options // Assume parent filters options if onSearch is provided
-        : options.filter(opt => opt.label.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredOptions = options.filter(opt => 
+        opt.label.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (opt.subLabel && opt.subLabel.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
     const handleSelect = (val: string) => {
         onChange(val);
@@ -86,7 +87,7 @@ export function SearchableSelect({ options, value, onChange, placeholder = "Sele
             </div>
 
             {open && !disabled && (
-                <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute z-[9999] w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto animate-in fade-in zoom-in-95 duration-100">
                     <div className="sticky top-0 p-2 bg-white border-b">
                          <input 
                             ref={inputRef}
