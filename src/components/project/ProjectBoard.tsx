@@ -22,6 +22,13 @@ const dropAnimation: DropAnimation = {
   }),
 };
 
+const dragOverlayStyle = {
+    boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+    cursor: 'grabbing',
+    transform: 'scale(1.02) rotate(3deg)',
+    opacity: 0.9,
+};
+
 export function ProjectBoard({ project }: { project: ProjectData }) {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeType, setActiveType] = useState<string | null>(null);
@@ -289,7 +296,7 @@ export function ProjectBoard({ project }: { project: ProjectData }) {
                 >
                     <div className="space-y-4">
                         {sections.map((section: any) => (
-                            <SectionItem key={section.id} section={section} projectId={project.id} onMoveModule={handleMoveModule} />
+                            <SectionItem key={section.id} section={section} projectId={project.id} partners={project.partners} members={project.members} onMoveModule={handleMoveModule} />
                         ))}
                     </div>
                 </SortableContext>
@@ -301,7 +308,7 @@ export function ProjectBoard({ project }: { project: ProjectData }) {
                 >
                     <div className="space-y-4">
                         {works.map((work: any) => (
-                            <WorkPackageItem key={work.id} work={work} projectId={project.id} partners={project.partners} onMoveModule={handleMoveModule} />
+                            <WorkPackageItem key={work.id} work={work} projectId={project.id} partners={project.partners} members={project.members} onMoveModule={handleMoveModule} />
                         ))}
                     </div>
                 </SortableContext>
@@ -310,10 +317,12 @@ export function ProjectBoard({ project }: { project: ProjectData }) {
             {mounted && createPortal(
                 <DragOverlay dropAnimation={dropAnimation}>
                     {activeId ? (
-                        activeType === 'MODULE' ? <ModuleItem module={activeItem} projectId={project.id} /> :
-                        activeType === 'SECTION' ? <SectionItem section={activeItem} projectId={project.id} /> :
-                        activeType === 'WORK' ? <WorkPackageItem work={activeItem} projectId={project.id} /> :
-                        <div className="p-4 bg-white shadow-xl rounded border">Dragging {activeType}...</div>
+                        <div style={dragOverlayStyle}>
+                            {activeType === 'MODULE' ? <ModuleItem module={activeItem} projectId={project.id} /> :
+                            activeType === 'SECTION' ? <SectionItem section={activeItem} projectId={project.id} /> :
+                            activeType === 'WORK' ? <WorkPackageItem work={activeItem} projectId={project.id} /> :
+                            <div className="p-4 bg-white shadow-xl rounded border">Dragging {activeType}...</div>}
+                        </div>
                     ) : null}
                 </DragOverlay>,
                 document.body

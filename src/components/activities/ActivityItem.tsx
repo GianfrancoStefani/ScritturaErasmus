@@ -9,18 +9,43 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { DeleteButton } from "@/components/ui/DeleteButton";
 import { deleteActivity } from "@/app/actions/activities";
 
+import { AssignmentManager } from "@/components/common/AssignmentManager";
+
 interface ActivityItemProps {
     activity: any;
     projectId: string;
-    partners: any[]; // needed for Form
+    partners: any[]; // needed for Form (Global list)
+    inheritedPartners?: any[]; // Cascading from parents
     onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void;
 }
 
-export function ActivityItem({ activity, projectId, partners, onMoveModule }: ActivityItemProps) {
+export function ActivityItem({ activity, projectId, partners, inheritedPartners = [], onMoveModule }: ActivityItemProps) {
     
     // Find partner names
     const leadingOrg = partners.find(p => p.id === activity.leadingOrgId)?.name || "N/A";
     const participatingOrgs = activity.participatingOrgIds.map((id: string) => partners.find(p => p.id === id)?.name).filter(Boolean).join(", ");
+
+    // Combine inherited partners with Activity-specific partners for AssignmentManager suggestions
+    // Structure: We need { partnerId: string, partner: { name: string } } objects if possible, 
+    // or just look up from global 'partners' list using IDs.
+    // AssignmentManager expects generic objects with { partnerId }.
+    
+    // 1. Activity Specific IDs
+    const activityPartnerIds = [activity.leadingOrgId, ...activity.participatingOrgIds].filter(Boolean);
+    
+    // 2. Map IDs to objects (mocking structure expected by AssignmentManager helper)
+    // AssignmentManager uses: partners.map(p => p.partnerId)
+    // So we need to pass objects that have a 'partnerId' property.
+    // But 'inheritedPartners' coming from Section/Work might satisfy this (WorkPartner model has partnerId).
+    // Activity leadingOrgId is just a string. We need to wrap it.
+    
+    const activityPartnersWrapped = activityPartnerIds.map(id => ({ partnerId: id }));
+    
+    // 3. Combine
+    const suggestedPartners = [
+        ...inheritedPartners,
+        ...activityPartnersWrapped
+    ];
 
     return (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 relative group/activity">
@@ -66,7 +91,7 @@ export function ActivityItem({ activity, projectId, partners, onMoveModule }: Ac
                  </div>
                  <div className="flex items-center gap-2">
                     <Building size={14} className="text-slate-400" />
-                     <span title="Participating Orgs" className="truncate">
+                    <span title="Participating Orgs" className="truncate">
                         <strong>Partners:</strong> {participatingOrgs || "None"}
                     </span>
                  </div>
@@ -78,6 +103,16 @@ export function ActivityItem({ activity, projectId, partners, onMoveModule }: Ac
                     <Target size={14} className="text-rose-500" />
                     <span className="italic">{activity.expectedResults || "No expected results defined"}</span>
                  </div>
+            </div>
+
+            {/* Team Assignments */}
+            <div className="mb-4">
+                 <AssignmentManager 
+                    entityId={activity.id}
+                    entityType="ACTIVITY"
+                    projectId={projectId}
+                    partners={suggestedPartners} // Pass aggregated suggestions
+                 />
             </div>
 
             {/* Modules Container (Activities can have modules too!) */}

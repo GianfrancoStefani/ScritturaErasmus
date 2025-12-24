@@ -246,13 +246,35 @@ export async function reorderContributions(items: { id: string, order: number }[
     }
 }
 
+import { createNotification } from "@/app/actions/notifications";
+
 export async function updateModuleStatus(moduleId: string, status: string) {
     try {
-        await prisma.module.update({
+        const module = await prisma.module.update({
             where: { id: moduleId },
-            data: { status }
+            data: { status },
+            select: { id: true, title: true, projectId: true }
         });
+        
         revalidatePath("/dashboard/projects/[id]"); 
+        
+        // Notify Leaders and Editors about status change
+        // Fetch members
+        const members = await prisma.moduleMember.findMany({
+            where: { moduleId, role: { in: ['LEADER', 'EDITOR', 'SUPERVISOR'] } },
+            select: { userId: true }
+        });
+        
+        await Promise.all(members.map(m => 
+            createNotification(
+                m.userId,
+                "Status Updated",
+                `Module "${module.title}" status changed to ${status}`,
+                `/dashboard/projects/${module.projectId}/modules/${moduleId}`,
+                status === 'DONE' ? 'SUCCESS' : 'INFO'
+            )
+        ));
+
         return { success: true };
     } catch (error) {
         return { error: "Failed to update status" };

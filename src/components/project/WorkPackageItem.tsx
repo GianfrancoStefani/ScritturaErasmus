@@ -11,10 +11,23 @@ import { CreateTaskButton } from "@/components/tasks/CreateTaskButton";
 import { EditWorkPackageButton } from "@/components/works/WorkPackageForm";
 import { CloneWorkPackageButton } from "@/components/works/CloneWorkPackageButton";
 
+import { PartnerManager } from "@/components/common/PartnerManager";
+import { addWorkPartner, removeWorkPartner, updateWorkPartnerRole, getWorkPartners } from "@/app/actions/work-partners";
 import { ActivityItem } from "@/components/activities/ActivityItem";
-import { ActivityForm } from "@/components/activities/ActivityForm";
+// Removed LeadPartnerSelector
 
-export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }: { work: any, projectId: string, partners?: any[], onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void }) {
+import { ActivityForm } from "@/components/activities/ActivityForm";
+import { TaskPartnerManager } from "@/components/tasks/TaskPartnerManager";
+
+export function WorkPackageItem({ work, projectId, partners = [], inheritedPartners = [], members = [], onMoveModule }: 
+    { 
+        work: any, 
+        projectId: string, 
+        partners?: any[], 
+        inheritedPartners?: any[], 
+        members?: any[], 
+        onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void 
+    }) {
     console.log(`[WorkPackageItem] Render ${work.title}. Modules:`, work.modules?.map((m: any) => m.title).join(', '));
     const [isOpen, setIsOpen] = useState(false); // Main WP Expand
     const [showModules, setShowModules] = useState(true); // Level 1 Modules
@@ -35,6 +48,18 @@ export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }
         opacity: isDragging ? 0.5 : 1,
     };
 
+    const handleAddPartner = async (workId: string, partnerId: string) => {
+        return await addWorkPartner({ workId, partnerId, role: "BENEFICIARY" });
+    };
+
+    const handleRemovePartner = async (workId: string, partnerId: string) => {
+        return await removeWorkPartner(workId, partnerId);
+    };
+    
+    const handleUpdatePartnerRole = async (workId: string, partnerId: string, role: string, responsibleUserId?: string) => {
+        return await updateWorkPartnerRole(workId, partnerId, role, responsibleUserId);
+    };
+
     return (
         <div 
             ref={setNodeRef}
@@ -51,7 +76,18 @@ export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }
                         <Layers size={16} />
                      </div>
                      <div>
-                        <h3 className="font-bold text-lg text-slate-800">{work.title}</h3>
+                        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                            {work.title}
+                            <PartnerManager 
+                                entityId={work.id}
+                                initialPartners={work.partners || []}
+                                availablePartners={partners}
+                                availableUsers={members}
+                                onAdd={handleAddPartner}
+                                onRemove={handleRemovePartner}
+                                onUpdateRole={handleUpdatePartnerRole}
+                            />
+                        </h3>
                         <div className="text-xs text-slate-500 flex gap-2">
                              <span>Budget: €{work.budget}</span>
                         </div>
@@ -142,7 +178,14 @@ export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }
                                 {work.tasks.map((task: any) => (
                                     <div key={task.id} className="bg-white border border-slate-200 rounded shadow-sm p-3">
                                         <div className="flex justify-between items-center mb-2">
-                                            <div className="font-semibold text-sm text-slate-700">{task.title}</div>
+                                            <div className="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                                {task.title}
+                                                <TaskPartnerManager 
+                                                    taskId={task.id}
+                                                    initialPartners={task.partners || []} 
+                                                    availablePartners={partners}
+                                                />
+                                            </div>
                                             <div className="flex gap-2">
                                                  <ActivityForm 
                                                     parentId={task.id} 
@@ -199,15 +242,24 @@ export function WorkPackageItem({ work, projectId, partners = [], onMoveModule }
                                            <div className="border-t border-slate-100 pt-2 mt-2">
                                                 <div className="text-[10px] font-bold text-indigo-400 uppercase mb-2">Activities ({task.activities.length})</div>
                                                 <div className="space-y-3">
-                                                    {task.activities.map((act: any) => (
-                                                        <ActivityItem 
-                                                            key={act.id} 
-                                                            activity={act} 
-                                                            projectId={projectId} 
-                                                            partners={partners}
-                                                            onMoveModule={onMoveModule}
-                                                        />
-                                                    ))}
+                                                    {task.activities.map((act: any) => {
+                                                        const effectivePartners = [
+                                                            ...(inheritedPartners || []),
+                                                            ...(work.partners || []),
+                                                            ...(task.partners || [])
+                                                        ];
+
+                                                        return (
+                                                            <ActivityItem 
+                                                                key={act.id} 
+                                                                activity={act} 
+                                                                projectId={projectId} 
+                                                                partners={partners}
+                                                                inheritedPartners={effectivePartners}
+                                                                onMoveModule={onMoveModule}
+                                                            />
+                                                        );
+                                                    })}
                                                     {task.activities.length === 0 && (
                                                         <div className="text-center py-2 text-[10px] text-slate-400 italic">No activities</div>
                                                     )}

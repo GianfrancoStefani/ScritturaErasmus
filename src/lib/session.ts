@@ -19,3 +19,22 @@ export async function getCurrentProjectRole(projectId: string): Promise<string |
 
     return member?.role || null;
 }
+
+export async function verifyProjectAccess(projectId: string) {
+    const session = await auth();
+    if (!session?.user?.id) return { authorized: false, error: "Unauthorized" };
+    
+    // Admin Override
+    if (session.user.role === 'ADMIN') return { authorized: true };
+
+    const member = await prisma.projectMember.findFirst({
+        where: {
+            projectId,
+            userId: session.user.id
+        }
+    });
+
+    if (!member) return { authorized: false, error: "Forbidden" };
+
+    return { authorized: true, role: member.role };
+}

@@ -1,5 +1,6 @@
 import LoginForm from "@/components/auth/LoginForm";
 import { Layers } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   return (
@@ -17,6 +18,12 @@ export default function LoginPage() {
                 Please log in to continue.
             </h1>
             <LoginForm />
+            <div className="mt-6 text-center text-sm">
+                Don&apos;t have an account?{" "}
+                <Link href="/register" className="font-semibold text-indigo-600 hover:text-indigo-500">
+                    Sign up
+                </Link>
+            </div>
         </div>
       </div>
     </main>

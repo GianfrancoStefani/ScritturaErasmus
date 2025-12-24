@@ -1,43 +1,18 @@
 import prisma from "@/lib/prisma";
-import { ExportConfigurator } from "@/components/export/ExportConfigurator";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, PieChart, CalendarCheck } from "lucide-react";
+import { TimesheetExportCard } from "@/components/export/TimesheetExportCard";
+import { BudgetExportCard } from "@/components/export/BudgetExportCard";
+import { WorkplanExportCard } from "@/components/export/WorkplanExportCard";
 
-export default async function ExportSetupPage({ params }: { params: { id: string } }) {
+export default async function ExportHubPage({ params }: { params: { id: string } }) {
     const project = await prisma.project.findUnique({
         where: { id: params.id },
         include: {
-            partners: true,
-            modules: { 
-                include: { 
-                    comments: { include: { user: true } } 
-                },
-                orderBy: { order: 'asc' }
-            },
-            works: {
+            partners: {
                 include: {
-                    modules: { 
-                        include: { comments: { include: { user: true } } },
-                        orderBy: { order: 'asc' }
-                    },
-                    tasks: {
-                        include: {
-                            modules: { 
-                                include: { comments: { include: { user: true } } },
-                                orderBy: { order: 'asc' }
-                            },
-                            activities: {
-                                include: {
-                                    modules: {
-                                         include: { comments: { include: { user: true } } },
-                                         orderBy: { order: 'asc' }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                orderBy: { order: 'asc' }
+                    users: true
+                }
             }
         }
     });
@@ -45,22 +20,22 @@ export default async function ExportSetupPage({ params }: { params: { id: string
     if (!project) return <div>Project not found</div>;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-6rem)]">
-            <div className="mb-4">
-                <Link 
+        <div className="p-8 max-w-5xl mx-auto space-y-8">
+            <div>
+                 <Link 
                     href={`/dashboard/projects/${params.id}`} 
-                    className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 mb-2 w-fit"
+                    className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 mb-2 w-fit transition-colors"
                 >
                     <ArrowLeft size={16} /> Back to Project
                 </Link>
-                <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-slate-900">PDF Export Setup</h1>
-                    <div className="text-sm text-slate-500">Configure your document structure</div>
-                </div>
+                <h1 className="text-3xl font-bold text-slate-900">Export & Reporting</h1>
+                <p className="text-slate-500">Generate and download project reports.</p>
             </div>
 
-            <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <ExportConfigurator project={project} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <TimesheetExportCard project={project} />
+                <BudgetExportCard project={project} />
+                <WorkplanExportCard project={project} />
             </div>
         </div>
     );

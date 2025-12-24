@@ -5,9 +5,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import { Layers, ChevronDown, ChevronRight, Plus, Type, MessageSquare } from "lucide-react";
 import { ModuleItem } from "./ModuleItem";
+import { WorkPackageItem } from "./WorkPackageItem";
 import { CreateModuleButton } from "@/components/modules/ModuleForm";
+import { PartnerManager } from "@/components/common/PartnerManager";
+import { addSectionPartner, removeSectionPartner, updateSectionPartnerRole } from "@/app/actions/section-partners";
 
-export function SectionItem({ section, projectId, onMoveModule }: { section: any, projectId: string, onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void }) {
+export function SectionItem({ section, projectId, partners = [], members = [], onMoveModule }: { section: any, projectId: string, partners?: any[], members?: any[], onMoveModule?: (moduleId: string, direction: 'UP' | 'DOWN') => void }) {
     const [isOpen, setIsOpen] = useState(false);
 
     // If we want the SECTION itself to be sortable, we hook useSortable here.
@@ -29,6 +32,18 @@ export function SectionItem({ section, projectId, onMoveModule }: { section: any
         opacity: isDragging ? 0.5 : 1,
     };
 
+    const handleAddPartner = async (sectionId: string, partnerId: string) => {
+        return await addSectionPartner({ sectionId, partnerId, role: "BENEFICIARY" });
+    };
+
+    const handleRemovePartner = async (sectionId: string, partnerId: string) => {
+        return await removeSectionPartner(sectionId, partnerId);
+    };
+
+    const handleUpdatePartnerRole = async (sectionId: string, partnerId: string, role: string, responsibleUserId?: string) => {
+        return await updateSectionPartnerRole(sectionId, partnerId, role, responsibleUserId);
+    };
+
     return (
         <div 
             ref={setNodeRef}
@@ -45,10 +60,23 @@ export function SectionItem({ section, projectId, onMoveModule }: { section: any
                     >
                         <Layers size={16} />
                      </div>
-                     <button onClick={() => setIsOpen(!isOpen)} className="font-bold text-lg text-slate-800 flex items-center gap-2 hover:text-indigo-700">
-                        {section.title}
-                        {/* {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />} */}
-                     </button>
+                     <div className="flex items-center gap-2">
+                        <span 
+                            onClick={() => setIsOpen(!isOpen)} 
+                            className="font-bold text-lg text-slate-800 hover:text-indigo-700 cursor-pointer select-none"
+                        >
+                            {section.title}
+                        </span>
+                        <PartnerManager 
+                                entityId={section.id}
+                                initialPartners={section.partners || []}
+                                availablePartners={partners}
+                                availableUsers={members}
+                                onAdd={handleAddPartner}
+                                onRemove={handleRemovePartner}
+                                onUpdateRole={handleUpdatePartnerRole}
+                        />
+                     </div>
                 </div>
                 
                 <div className="flex items-center gap-1">
@@ -76,15 +104,38 @@ export function SectionItem({ section, projectId, onMoveModule }: { section: any
                 </div>
             </div>
 
-            {/* Content (Modules) */}
+            {/* Content (Modules & Works) */}
             {isOpen && (
                 <div className="p-4 bg-slate-50/30 min-h-[50px]">
+                    {/* Render Works within Section */}
+                    {section.works && section.works.length > 0 && (
+                        <div className="mb-4 space-y-4 border-b border-slate-200 pb-4">
+                             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Work Packages</div>
+                             <SortableContext 
+                                items={section.works.map((w: any) => w.id)} 
+                                strategy={verticalListSortingStrategy}
+                             >
+                                {section.works.map((work: any) => (
+                                    <WorkPackageItem 
+                                        key={work.id} 
+                                        work={work} 
+                                        projectId={projectId} 
+                                        partners={partners} // Global partners for lookup
+                                        inheritedPartners={section.partners || []} // Cascading from Section
+                                        onMoveModule={onMoveModule}
+                                    />
+                                ))}
+                             </SortableContext>
+                        </div>
+                    )}
+
+                    <div className="h-4"></div>
                     <SortableContext 
                         id={section.id} // Important for cross-container
                         items={section.modules.map((m: any) => m.id)} 
                         strategy={verticalListSortingStrategy}
                     >
-                        {section.modules.length === 0 ? (
+                        {section.modules.length === 0 && (!section.works || section.works.length === 0) ? (
                             <div className="text-center py-4 text-slate-400 italic text-sm border-2 border-dashed border-slate-200 rounded-lg">
                                 Empty (Drop items here)
                             </div>

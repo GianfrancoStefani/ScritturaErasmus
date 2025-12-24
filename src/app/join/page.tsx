@@ -2,36 +2,83 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { auth } from "@/auth";
+import { Button } from "@/components/ui/Button"; // Assuming available
+import { KeyRound } from "lucide-react";
 
 export default async function JoinPage({ searchParams }: { searchParams: { token: string } }) {
     const token = searchParams.token;
-    if (!token) return <div className="p-8 text-center text-red-500">Invalid link</div>;
 
-    // Validate Token
+    // 1. Manual Token Entry UI
+    if (!token) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                <div className="bg-white p-8 rounded-xl shadow-lg border border-slate-200 max-w-md w-full text-center">
+                    <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <KeyRound size={32} />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-800 mb-2">Have an invite?</h1>
+                    <p className="text-slate-500 mb-6">Enter your invitation token below to join the project.</p>
+                    
+                    <form className="flex flex-col gap-4">
+                        <input 
+                            type="text" 
+                            name="token" 
+                            placeholder="Enter token (e.g. 123-abc...)" 
+                            className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            required
+                        />
+                        <Button type="submit" className="w-full rounded-lg h-12 text-base">
+                            Verify Token
+                        </Button>
+                    </form>
+                    
+                    <p className="mt-6 text-sm text-slate-400">
+                        Don't have a token? Ask your project coordinator.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // 2. Validate Token
     const invite = await prisma.invitation.findUnique({
         where: { token },
         include: { project: true }
     });
 
-    if (!invite) return <div className="p-8 text-center text-red-500">Invitation not found or expired</div>;
-    if (invite.status !== 'PENDING') return <div className="p-8 text-center text-amber-500">Invitation already used</div>;
-    if (new Date() > invite.expiresAt) return <div className="p-8 text-center text-red-500">Invitation expired</div>;
+    if (!invite) return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="bg-white p-8 rounded-xl shadow text-center border border-red-100">
+                <div className="text-red-500 font-bold text-xl mb-2">Invalid Invitation</div>
+                <p className="text-slate-500">The token provided is invalid or required parameters are missing.</p>
+                <a href="/join" className="mt-4 inline-block text-indigo-600 hover:underline">Try again</a>
+            </div>
+        </div>
+    );
+
+    if (invite.status !== 'PENDING') return (
+         <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="bg-white p-8 rounded-xl shadow text-center border border-amber-100">
+                <div className="text-amber-500 font-bold text-xl mb-2">Invitation Used</div>
+                <p className="text-slate-500">This invitation has already been redeemed.</p>
+                <a href="/login" className="mt-4 inline-block text-indigo-600 hover:underline">Go to Login</a>
+            </div>
+        </div>
+    );
+
+    if (new Date() > invite.expiresAt) return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+             <div className="bg-white p-8 rounded-xl shadow text-center border border-red-100">
+                <div className="text-red-500 font-bold text-xl mb-2">Invitation Expired</div>
+                <p className="text-slate-500">This invitation has expired.</p>
+            </div>
+        </div>
+    );
 
     // Check if user is logged in
     const session = await auth();
-    const isLoggedIn = !!session?.user;
-    const userEmail = session?.user?.email;
-
-    // Logic:
-    // If logged in and email matches invite -> Proceed to Wizard
-    // If logged in but email mismatch -> Warn "You are logged in as X, invite is for Y"
-    // If not logged in -> Redirect to Register/Login with callback? 
-    // Actually, Wizard should handle "New User" creation inline or link to register.
-    // Simplifying: If not logged in, show "Register to Join" or "Login to Join".
     
-    // Allow user to continue if emails match OR if they register now.
-    
-    // Fetch Partners for selection
+    // Fetch Partners for selection within the wizard
     const partners = await prisma.partner.findMany({
         where: { projectId: invite.projectId },
         select: { id: true, name: true }

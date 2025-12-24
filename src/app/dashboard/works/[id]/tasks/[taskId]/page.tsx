@@ -4,7 +4,6 @@ import { ActivityForm } from "@/components/activities/ActivityForm";
 import { ActivityItem } from "@/components/activities/ActivityItem";
 import Link from "next/link";
 import { format } from "date-fns";
-import { AssignmentList } from "@/components/assignments/AssignmentList";
 
 export default async function TaskDetailsPage({ params }: { params: { id: string, taskId: string } }) {
   const task = await prisma.task.findUnique({
@@ -16,9 +15,7 @@ export default async function TaskDetailsPage({ params }: { params: { id: string
       work: {
         include: { project: true }
       },
-      assignments: {
-        include: { user: true }
-      }
+      // assignments are fetched client-side in TaskAssignments
     }
   });
 
@@ -26,6 +23,7 @@ export default async function TaskDetailsPage({ params }: { params: { id: string
     notFound();
   }
 
+  // Restore partners fetching for ActivityItem
   const partners = await prisma.partner.findMany({
     where: { projectId: task.work.projectId },
     include: { users: true }
@@ -50,8 +48,13 @@ export default async function TaskDetailsPage({ params }: { params: { id: string
         <h2 className="text-xl font-semibold text-slate-800">Activities</h2>
         
         <div className="grid gap-4">
-           {task.activities.map(activity => (
-             <ActivityItem key={activity.id} activity={activity} />
+           {task.activities.map((activity: any) => (
+             <ActivityItem 
+                key={activity.id} 
+                activity={activity} 
+                projectId={task.work.projectId}
+                partners={partners}
+             />
            ))}
 
            {task.activities.length === 0 && (
@@ -60,18 +63,19 @@ export default async function TaskDetailsPage({ params }: { params: { id: string
         </div>
 
         {/* Create New Activity Form */}
-        <ActivityForm taskId={task.id} />
+        <ActivityForm 
+            parentId={task.id} 
+            projectId={task.work.projectId}
+            partners={partners}
+        />
       </div>
 
-       {/* Assignments / Resources */}
-       <div className="space-y-4 pt-8 border-t">
-          <AssignmentList 
-            assignments={task.assignments as any} 
-            partners={partners as any} 
-            taskId={task.id}
-            projectId={task.work.projectId}
-          />
+       {/* Assignments / Resources - MOVED TO ACTIVITY LEVEL */}
+       {/* 
+       <div className="bg-slate-50 p-4 rounded border border-slate-200">
+          <p className="text-sm text-slate-500 italic">User assignments are now managed at the Activity level.</p>
        </div>
+       */}
     </div>
   );
 }

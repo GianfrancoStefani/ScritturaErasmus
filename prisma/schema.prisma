@@ -84,6 +84,9 @@ model Work {
   tasks         Task[]
   modules       Module[]
 
+  assignments   Assignment[]
+  partners      WorkPartner[]
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -100,6 +103,8 @@ model Task {
 
   leadPartnerId String?
   leadPartner   Partner?  @relation(fields: [leadPartnerId], references: [id])
+  
+  partners      TaskPartner[] // M:N Relation for Co-Leads/Beneficiaries
 
   activities    Activity[]
   modules       Module[]
@@ -124,6 +129,9 @@ model Section {
   modules       Module[]
   works         Work[]
   
+  assignments   Assignment[]
+  partners      SectionPartner[]
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -143,6 +151,7 @@ model Activity {
   expectedResults    String? // max 250 char
   
   modules            Module[]
+  assignments        Assignment[]
 
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -174,8 +183,12 @@ model Partner {
   
   leadingWorks    Work[]
   leadingTasks    Task[]
+  taskPartners    TaskPartner[] // M:N Relation
   leadingSections Section[]
   
+  workPartners    WorkPartner[]
+  sectionPartners SectionPartner[]
+
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
@@ -201,6 +214,8 @@ model User {
   username       String    @unique
   password       String    
   motherTongue   String?   // User's native language (e.g. 'it', 'en')
+  city           String?
+  nation         String?
   
   assignments    Assignment[]
   textComponents TextComponent[]
@@ -212,8 +227,13 @@ model User {
   availabilities UserAvailability[]
   moduleMemberships ModuleMember[]
   
+  responsibleTaskPartners    TaskPartner[]    @relation("TaskPartnerResponsible")
+  responsibleWorkPartners    WorkPartner[]    @relation("WorkPartnerResponsible")
+  responsibleSectionPartners SectionPartner[] @relation("SectionPartnerResponsible")
+  
   namingProposals ProjectNameProposal[]
   namingVotes     ProjectNameVote[]
+  notifications   Notification[]
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -223,8 +243,15 @@ model Assignment {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  taskId    String
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  workId    String?
+  work      Work?    @relation(fields: [workId], references: [id], onDelete: Cascade)
+  sectionId String?
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  activityId String?
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
   
   months    String?  // JSON string storing active months
   days      Float
@@ -279,6 +306,69 @@ model Module {
   updatedAt   DateTime @updatedAt
 }
 
+model TaskPartner {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  partnerId String
+  partner   Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  
+  role      String   @default("BENEFICIARY") // LEAD, CO_LEAD, BENEFICIARY
+  budget    Float?   // Optional override for budget distribution
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId   String? // Temporary field to force schema change if needed, checking below first.
+  // Actually, inserting responsibleUser.
+
+  responsibleUserId String?
+  responsibleUser   User?   @relation("TaskPartnerResponsible", fields: [responsibleUserId], references: [id])
+
+  @@unique([taskId, partnerId])
+}
+
+model WorkPartner {
+  id        String   @id @default(cuid())
+  workId    String
+  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  
+  partnerId String
+  partner   Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  
+  role      String   @default("BENEFICIARY") // LEAD, CO_LEAD, BENEFICIARY
+  budget    Float?   
+
+  responsibleUserId String?
+  responsibleUser   User?   @relation("WorkPartnerResponsible", fields: [responsibleUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([workId, partnerId])
+}
+
+model SectionPartner {
+  id        String   @id @default(cuid())
+  sectionId String
+  section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  
+  partnerId String
+  partner   Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  
+  role      String   @default("BENEFICIARY") // LEAD, CO_LEAD, BENEFICIARY
+  budget    Float?   
+
+  responsibleUserId String?
+  responsibleUser   User?   @relation("SectionPartnerResponsible", fields: [responsibleUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sectionId, partnerId])
+}
+
 model ModuleVersion {
   id        String   @id @default(cuid())
   moduleId  String
@@ -296,6 +386,11 @@ model ModuleMember {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   role      String   // SUPERVISOR, LEADER, EDITOR, VIEWER
+  
+  // Separation of Concerns: Writing vs Grant Execution
+  isWriter      Boolean @default(true)  // Has edit access in platform
+  isGrantPerson Boolean @default(false) // Is listed in the Grant Agreement PDF
+  grantTitle    String? // e.g., "Senior Researcher" (vs "Editor" in app)
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -554,4 +649,18 @@ model ProjectNameVote {
   createdAt  DateTime @default(now())
 
   @@unique([proposalId, userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title     String
+  message   String
+  link      String?  // URL to redirect to (e.g., specific module)
+  read      Boolean  @default(false)
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, ERROR
+  
+  createdAt DateTime @default(now())
 }

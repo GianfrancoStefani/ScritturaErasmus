@@ -30,9 +30,17 @@ async function getProject(id: string) {
         orderBy: { order: 'asc' },
         include: {
             modules: { include: moduleInclude, orderBy: { order: 'asc' } },
+            partners: {
+                include: { partner: true },
+                orderBy: { createdAt: 'asc' }
+            },
             works: {
                 orderBy: { order: 'asc' },
                 include: {
+                    partners: {
+                        include: { partner: true },
+                        orderBy: { createdAt: 'asc' }
+                    },
                     modules: { include: moduleInclude, orderBy: { order: 'asc' } },
                     tasks: {
                         include: {
@@ -41,6 +49,10 @@ async function getProject(id: string) {
                                 include: { 
                                     modules: { include: moduleInclude, orderBy: { order: 'asc' } }
                                 }
+                            },
+                            partners: {
+                                include: { partner: true },
+                                orderBy: { createdAt: 'asc' }
                             }
                         }
                     }
@@ -52,6 +64,10 @@ async function getProject(id: string) {
         where: { sectionId: null },
         orderBy: { order: 'asc' },
         include: {
+          partners: {
+              include: { partner: true },
+              orderBy: { createdAt: 'asc' }
+          },
           modules: { include: moduleInclude, orderBy: { order: 'asc' } },
           tasks: {
             include: {
@@ -60,6 +76,10 @@ async function getProject(id: string) {
                 include: { 
                     modules: { include: moduleInclude, orderBy: { order: 'asc' } }
                 }
+              },
+              partners: {
+                 include: { partner: true },
+                 orderBy: { createdAt: 'asc' }
               }
             }
           }
@@ -70,7 +90,10 @@ async function getProject(id: string) {
           orderBy: { order: 'asc' },
           include: moduleInclude
       },
-      partners: true
+      partners: true,
+      members: {
+          include: { user: true }
+      }
     }
   });
 }

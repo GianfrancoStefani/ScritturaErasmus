@@ -5,6 +5,7 @@ import { Bell, Search, LogOut } from "lucide-react";
 import { auth } from "@/auth";
 import { logout } from "@/app/actions/authActions";
 import { Button } from "@/components/ui/Button";
+import { NotificationBell } from "@/components/ui/NotificationBell";
 
 export async function Header() {
     const session = await auth();
@@ -24,12 +25,13 @@ export async function Header() {
         />
       </div>
 
+
+
+// ...
+
       {/* Right Section */}
       <div className="flex items-center gap-4">
-        <button className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100" title="Notifications">
-          <Bell size={20} />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-        </button>
+        {user?.id && <NotificationBell userId={user.id} />}
 
         <div className="h-8 w-px bg-slate-200" />
 

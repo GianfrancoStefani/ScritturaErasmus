@@ -2,29 +2,29 @@
 
 import { useState, useEffect } from "react";
 import { getProjectMembers } from "@/app/actions/project";
-import { assignUserToTask, removeAssignment, getTaskAssignments } from "@/app/actions/tasks";
-import { getTaskPartners } from "@/app/actions/task-partners";
+import { assignUser, removeAssignment, getAssignments } from "@/app/actions/assignments";
 import { checkWorkloadAction } from "@/app/actions/workloadActions"; 
 import { Loader2, AlertTriangle, Trash2, Plus, Ban, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 
-interface TaskAssignmentsProps {
-    taskId: string;
+interface AssignmentManagerProps {
+    entityId: string;
+    entityType: 'TASK' | 'WORK' | 'SECTION' | 'ACTIVITY';
     projectId: string;
+    partners?: any[]; // For cascading logic (optional)
 }
 
-export function TaskAssignments({ taskId, projectId }: TaskAssignmentsProps) {
+export function AssignmentManager({ entityId, entityType, projectId, partners = [] }: AssignmentManagerProps) {
     const [members, setMembers] = useState<any[]>([]);
     const [assignments, setAssignments] = useState<any[]>([]);
-    const [taskPartners, setTaskPartners] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [selectedUser, setSelectedUser] = useState("");
     const [days, setDays] = useState(0);
     const [months, setMonths] = useState<string[]>([]);
     
-    // Quick Months Helper (e.g. 2025-01 to 2025-12)
+    // Quick Months Helper (2025)
     const availableMonths = [
         "2025-01", "2025-02", "2025-03", "2025-04", 
         "2025-05", "2025-06", "2025-07", "2025-08",
@@ -33,24 +33,32 @@ export function TaskAssignments({ taskId, projectId }: TaskAssignmentsProps) {
 
     useEffect(() => {
         loadData();
-    }, [taskId, projectId]);
+    }, [entityId, projectId]);
 
     async function loadData() {
         setLoading(true);
-        const [m, a, tp] = await Promise.all([
+        const [m, a] = await Promise.all([
             getProjectMembers(projectId),
-            getTaskAssignments(taskId),
-            getTaskPartners(taskId)
+            getAssignments(entityId, entityType)
         ]);
         setMembers(m);
         setAssignments(a);
-        setTaskPartners(tp);
         setLoading(false);
     }
 
     async function handleAdd() {
         if (!selectedUser || days <= 0 || months.length === 0) return;
-        await assignUserToTask(taskId, selectedUser, days, months);
+        
+        await assignUser({
+            userId: selectedUser,
+            days,
+            months,
+            taskId: entityType === 'TASK' ? entityId : undefined,
+            workId: entityType === 'WORK' ? entityId : undefined,
+            sectionId: entityType === 'SECTION' ? entityId : undefined,
+            activityId: entityType === 'ACTIVITY' ? entityId : undefined,
+        });
+
         toast.success("Assigned");
         setDays(0);
         setMonths([]);
@@ -65,15 +73,16 @@ export function TaskAssignments({ taskId, projectId }: TaskAssignmentsProps) {
     }
 
     // Cascading Logic: Group members
-    const taskPartnerIds = taskPartners.map(tp => tp.partnerId);
+    const partnerIds = partners.map(p => p.partnerId);
     
-    const relevantMembers = members.filter(m => taskPartnerIds.includes(m.partnerId));
-    const otherMembers = members.filter(m => !taskPartnerIds.includes(m.partnerId));
+    // If partners are provided, filter relevant members
+    const relevantMembers = partners.length > 0 ? members.filter(m => partnerIds.includes(m.partnerId)) : [];
+    const otherMembers = partners.length > 0 ? members.filter(m => !partnerIds.includes(m.partnerId)) : members;
 
     return (
         <div className="border rounded-lg p-4 bg-slate-50 mt-4">
             <h4 className="font-semibold text-sm mb-4 text-slate-700 flex items-center gap-2">
-                <Briefcase size={16} /> Team Assignments & Workload
+                <Briefcase size={16} /> Team Assignments & Workload ({entityType})
             </h4>
             
             {loading ? <Loader2 className="animate-spin" /> : (
@@ -87,12 +96,12 @@ export function TaskAssignments({ taskId, projectId }: TaskAssignmentsProps) {
                     </div>
 
                     {/* Add Form */}
-                            <div className="pt-4 border-t border-slate-200 grid gap-4 bg-white p-4 rounded border border-slate-100 shadow-sm">
+                    <div className="pt-4 border-t border-slate-200 grid gap-4 bg-white p-4 rounded border border-slate-100 shadow-sm">
                          <div className="grid grid-cols-2 gap-4">
                              <div>
                                  <label className="text-xs font-bold text-slate-500">Member</label>
                                  <div className="text-[10px] text-slate-400 mb-1">
-                                     {relevantMembers.length > 0 ? "Showing suggested users from task partners" : "All project members"}
+                                     {relevantMembers.length > 0 ? "Showing suggested users from assigned partners" : "All project members"}
                                  </div>
                                  <select 
                                     className="w-full border rounded p-1 text-sm bg-white" 
@@ -102,9 +111,8 @@ export function TaskAssignments({ taskId, projectId }: TaskAssignmentsProps) {
                                 >
                                      <option value="">Select Member...</option>
                                      
-                                     {/* Group 1: Relevant Users (Task Partners) */}
                                      {relevantMembers.length > 0 && (
-                                         <optgroup label="✅ Task Partners Staff">
+                                         <optgroup label="✅ Partner Staff">
                                              {relevantMembers.map(m => (
                                                  <option key={m.user.id} value={m.user.id}>
                                                      {m.user.surname} {m.user.name} ({m.partner.name})
@@ -113,7 +121,6 @@ export function TaskAssignments({ taskId, projectId }: TaskAssignmentsProps) {
                                          </optgroup>
                                      )}
 
-                                     {/* Group 2: Others */}
                                      <optgroup label="All Project Members">
                                          {otherMembers.map(m => (
                                              <option key={m.user.id} value={m.user.id}>
@@ -168,7 +175,6 @@ function AssignmentRow({ assignment, onDelete }: { assignment: any, onDelete: ()
              try {
                  const ms = JSON.parse(assignment.months);
                  if (ms.length > 0) {
-                     // Check load for the first active month as a sample
                      const [year, month] = ms[0].split('-').map(Number);
                      checkWorkloadAction(assignment.userId, month, year).then(setWorkload);
                  }
