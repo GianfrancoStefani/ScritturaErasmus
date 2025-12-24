@@ -40,8 +40,8 @@ export function SectionItem({ section, projectId, partners = [], members = [], o
         return await removeSectionPartner(sectionId, partnerId);
     };
 
-    const handleUpdatePartnerRole = async (sectionId: string, partnerId: string, role: string, responsibleUserId?: string) => {
-        return await updateSectionPartnerRole(sectionId, partnerId, role, responsibleUserId);
+    const handleUpdatePartnerRole = async (sectionId: string, partnerId: string, role: string, responsibleUserIds?: string[]) => {
+        return await updateSectionPartnerRole(sectionId, partnerId, role, responsibleUserIds);
     };
 
     return (

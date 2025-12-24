@@ -56,8 +56,8 @@ export function WorkPackageItem({ work, projectId, partners = [], inheritedPartn
         return await removeWorkPartner(workId, partnerId);
     };
     
-    const handleUpdatePartnerRole = async (workId: string, partnerId: string, role: string, responsibleUserId?: string) => {
-        return await updateWorkPartnerRole(workId, partnerId, role, responsibleUserId);
+    const handleUpdatePartnerRole = async (workId: string, partnerId: string, role: string, responsibleUserIds?: string[]) => {
+        return await updateWorkPartnerRole(workId, partnerId, role, responsibleUserIds);
     };
 
     return (
@@ -184,6 +184,7 @@ export function WorkPackageItem({ work, projectId, partners = [], inheritedPartn
                                                     taskId={task.id}
                                                     initialPartners={task.partners || []} 
                                                     availablePartners={partners}
+                                                    availableUsers={members}
                                                 />
                                             </div>
                                             <div className="flex gap-2">

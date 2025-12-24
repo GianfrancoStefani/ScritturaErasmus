@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 
 export async function createProject(formData: FormData) {
   const title = formData.get("title") as string;
@@ -13,13 +14,18 @@ export async function createProject(formData: FormData) {
   const language = formData.get("language") as string;
   
     const templateId = formData.get("templateId") as string;
+    const partnerMappingRaw = formData.get("partnerMapping") as string;
+    const partnerMapping = partnerMappingRaw ? JSON.parse(partnerMappingRaw) : {};
     
+    const extraPartnersRaw = formData.get("extraPartners") as string;
+    const extraPartners = extraPartnersRaw ? JSON.parse(extraPartnersRaw) : [];
+
     // Calculate End Date
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + duration);
 
     try {
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: any) => {
             // 1. Create Project
             const project = await tx.project.create({
                 data: {
@@ -40,6 +46,7 @@ export async function createProject(formData: FormData) {
                 const template = await tx.project.findUnique({
                     where: { id: templateId },
                     include: {
+                        partners: { orderBy: { createdAt: 'asc' } }, // Needed for mapping
                         sections: {
                             orderBy: { order: 'asc' },
                             include: {
@@ -91,6 +98,91 @@ export async function createProject(formData: FormData) {
                 });
 
                 if (template) {
+                    // MAP PARTNERS
+                    const newPartnersMap = new Map<string, string>(); // TemplatePartnerID -> NewProjectPartnerID
+
+                    // Fetch all mapped organizations in one go if possible, or loop. Loop is fine for small count.
+                    for (const tp of template.partners) {
+                        const mappedOrgId = partnerMapping[tp.id];
+                        let newPartnerId;
+
+                        if (mappedOrgId) {
+                            // Create REAL Partner from Org
+                            const org = await tx.organization.findUnique({ where: { id: mappedOrgId } });
+                            if (org) {
+                                const newP = await tx.partner.create({
+                                    data: {
+                                        projectId: project.id,
+                                        organization: { connect: { id: org.id } }, // FIX: Relational connect
+                                        name: org.name,
+                                        nation: org.nation || "IT",
+                                        city: org.city || "City",
+                                        type: org.type || "NGO",
+                                        role: tp.role, // Inherit role (Coordinator vs Partner)
+                                        budget: 0,
+                                        email: org.email,
+                                        website: org.website,
+                                        logo: org.logoUrl
+                                    }
+                                });
+                                newPartnerId = newP.id;
+                            } else {
+                                // Fallback if org not found
+                                const newP = await tx.partner.create({
+                                    data: {
+                                        projectId: project.id,
+                                        name: tp.name,
+                                        nation: tp.nation,
+                                        city: tp.city,
+                                        type: tp.type,
+                                        role: tp.role,
+                                        budget: 0
+                                    }
+                                });
+                                newPartnerId = newP.id;
+                            }
+                        } else {
+                             // No mapping provided: Create Placeholder Partner (Clone exact template partner)
+                             const newP = await tx.partner.create({
+                                data: {
+                                    projectId: project.id,
+                                    name: tp.name,
+                                    nation: tp.nation,
+                                    city: tp.city,
+                                    type: tp.type,
+                                    role: tp.role,
+                                    budget: 0
+                                }
+                            });
+                            newPartnerId = newP.id;
+                        }
+                        newPartnersMap.set(tp.id, newPartnerId);
+                    }
+
+                    // CREATE EXTRA PARTNERS
+                    if (extraPartners && extraPartners.length > 0) {
+                        for (const orgId of extraPartners) {
+                            const org = await tx.organization.findUnique({ where: { id: orgId } });
+                            if (org) {
+                                await tx.partner.create({
+                                    data: {
+                                        projectId: project.id,
+                                        organization: { connect: { id: org.id } },
+                                        name: org.name,
+                                        nation: org.nation || "IT",
+                                        city: org.city || "City",
+                                        type: org.type || "Other",
+                                        role: "PARTNER", // Default role for extras
+                                        budget: 0,
+                                        email: org.email,
+                                        website: org.website,
+                                        logo: org.logoUrl
+                                    }
+                                });
+                            }
+                        }
+                    }
+
                     // Helper to copy modules
                     const copyModules = async (modules: any[], parentId: string, parentType: 'PROJECT' | 'SECTION' | 'WORK' | 'TASK' | 'ACTIVITY') => {
                         for (const m of modules) {
@@ -142,6 +234,21 @@ export async function createProject(formData: FormData) {
                             });
                             await copyModules(work.modules, newWork.id, 'WORK');
                             
+                           // Clone Work Partners
+                           const workPartners = await tx.workPartner.findMany({ where: { workId: work.id } });
+                           for (const wp of workPartners) {
+                               if (newPartnersMap.has(wp.partnerId)) {
+                                   await tx.workPartner.create({
+                                       data: {
+                                           workId: newWork.id,
+                                           partnerId: newPartnersMap.get(wp.partnerId)!,
+                                           role: wp.role,
+                                           budget: 0
+                                       }
+                                   });
+                               }
+                           }
+
                             for (const task of work.tasks) {
                                 const newTask = await tx.task.create({
                                     data: {
@@ -153,6 +260,21 @@ export async function createProject(formData: FormData) {
                                     }
                                 });
                                 await copyModules(task.modules, newTask.id, 'TASK');
+
+                                // Clone Task Partners
+                                const taskPartners = await tx.taskPartner.findMany({ where: { taskId: task.id } });
+                                for (const tp of taskPartners) {
+                                    if (newPartnersMap.has(tp.partnerId)) {
+                                        await tx.taskPartner.create({
+                                            data: {
+                                                taskId: newTask.id,
+                                                partnerId: newPartnersMap.get(tp.partnerId)!,
+                                                role: tp.role,
+                                                budget: 0
+                                            }
+                                        });
+                                    }
+                                }
 
                                 for (const act of task.activities) {
                                     const newAct = await tx.activity.create({
@@ -184,6 +306,21 @@ export async function createProject(formData: FormData) {
                             });
                             await copyModules(work.modules, newWork.id, 'WORK');
                             
+                             // Clone Work Partners
+                           const workPartners = await tx.workPartner.findMany({ where: { workId: work.id } });
+                           for (const wp of workPartners) {
+                               if (newPartnersMap.has(wp.partnerId)) {
+                                   await tx.workPartner.create({
+                                       data: {
+                                           workId: newWork.id,
+                                           partnerId: newPartnersMap.get(wp.partnerId)!,
+                                           role: wp.role,
+                                           budget: 0
+                                       }
+                                   });
+                               }
+                           }
+
                             for (const task of work.tasks) {
                                 const newTask = await tx.task.create({
                                     data: {
@@ -195,6 +332,21 @@ export async function createProject(formData: FormData) {
                                     }
                                 });
                                 await copyModules(task.modules, newTask.id, 'TASK');
+
+                                 // Clone Task Partners
+                                const taskPartners = await tx.taskPartner.findMany({ where: { taskId: task.id } });
+                                for (const tp of taskPartners) {
+                                    if (newPartnersMap.has(tp.partnerId)) {
+                                        await tx.taskPartner.create({
+                                            data: {
+                                                taskId: newTask.id,
+                                                partnerId: newPartnersMap.get(tp.partnerId)!,
+                                                role: tp.role,
+                                                budget: 0
+                                            }
+                                        });
+                                    }
+                                }
 
                                 for (const act of task.activities) {
                                     const newAct = await tx.activity.create({

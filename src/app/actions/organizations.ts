@@ -29,16 +29,16 @@ export async function createOrganization(formData: FormData) {
 
   const rawData = {
      name: formData.get("name"),
-     shortName: formData.get("shortName"),
-     type: formData.get("type"),
-     nation: formData.get("nation"),
-     city: formData.get("city"),
-     address: formData.get("address"),
-     logoUrl: formData.get("logoUrl"),
-     website: formData.get("website"),
-     unirankUrl: formData.get("unirankUrl"),
-     email: formData.get("email"),
-     scopeProjectId: formData.get("scopeProjectId") || null,
+     shortName: formData.get("shortName")?.toString() || undefined,
+     type: formData.get("type")?.toString() || undefined,
+     nation: formData.get("nation")?.toString() || undefined,
+     city: formData.get("city")?.toString() || undefined,
+     address: formData.get("address")?.toString() || undefined,
+     logoUrl: formData.get("logoUrl")?.toString() || undefined,
+     website: formData.get("website")?.toString() || undefined,
+     unirankUrl: formData.get("unirankUrl")?.toString() || undefined,
+     email: formData.get("email")?.toString() || undefined,
+     scopeProjectId: formData.get("scopeProjectId")?.toString() || null,
   };
 
   const validated = OrganizationSchema.safeParse(rawData);
@@ -183,12 +183,13 @@ export async function createDepartment(organizationId: string, name: string) {
 }
 
 export async function searchOrganizations(query: string, page: number = 1, limit: number = 20) {
-    if (!query) return { data: [], total: 0 };
+    // if (!query) return { data: [], total: 0 }; // ALLOW EMPTY QUERY
     
     // "Immediate" search: Target only name for speed
-    const where = {
-        name: { contains: query, mode: 'insensitive' as const }
-    };
+    const where: any = {};
+    if (query) {
+        where.name = { contains: query, mode: 'insensitive' as const };
+    }
 
     const [total, data] = await prisma.$transaction([
         prisma.organization.count({ where }),

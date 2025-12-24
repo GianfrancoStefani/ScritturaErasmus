@@ -9,12 +9,12 @@ const AddPartnerSchema = z.object({
   partnerId: z.string(),
   role: z.enum(["LEAD", "CO_LEAD", "BENEFICIARY"]).default("BENEFICIARY"),
   budget: z.number().optional(),
-  responsibleUserId: z.string().optional(),
+  responsibleUserIds: z.array(z.string()).optional(),
 });
 
 export async function addSectionPartner(data: z.infer<typeof AddPartnerSchema>) {
   try {
-    const { sectionId, partnerId, role, budget, responsibleUserId } = data;
+    const { sectionId, partnerId, role, budget, responsibleUserIds } = data;
 
     // Check if exists
     const existing = await prisma.sectionPartner.findUnique({
@@ -36,7 +36,9 @@ export async function addSectionPartner(data: z.infer<typeof AddPartnerSchema>) 
         partnerId,
         role,
         budget,
-        responsibleUserId,
+        responsibleUsers: responsibleUserIds ? {
+             connect: responsibleUserIds.map(id => ({ id }))
+        } : undefined,
       },
     });
 
@@ -89,11 +91,16 @@ export async function removeSectionPartner(sectionId: string, partnerId: string)
   }
 }
 
-export async function updateSectionPartnerRole(sectionId: string, partnerId: string, role: string, responsibleUserId?: string) {
+export async function updateSectionPartnerRole(sectionId: string, partnerId: string, role: string, responsibleUserIds?: string[]) {
     try {
         await prisma.sectionPartner.update({
             where: { sectionId_partnerId: { sectionId, partnerId } },
-            data: { role, responsibleUserId }
+            data: { 
+                role,
+                responsibleUsers: responsibleUserIds ? {
+                    set: responsibleUserIds.map(id => ({ id }))
+                } : undefined
+            }
         });
 
         // Sync Legacy Field
@@ -115,7 +122,7 @@ export async function getSectionPartners(sectionId: string) {
     try {
         const partners = await prisma.sectionPartner.findMany({
             where: { sectionId },
-            include: { partner: true, responsibleUser: true },
+            include: { partner: true, responsibleUsers: true },
             orderBy: { createdAt: 'asc' }
         });
         return partners;

@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Users, Plus, X, Check, Shield, ShieldCheck, User } from "lucide-react";
+import { Users, Plus, X, Check, User } from "lucide-react";
 import { addTaskPartner, removeTaskPartner, updateTaskPartnerRole } from "@/app/actions/task-partners";
 import { toast } from "sonner";
-// import { cn } from "@/lib/utils"; // Removed if not found
-import clsx from "clsx"; // Assuming clsx is installed as per summary
+import clsx from "clsx";
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return clsx(inputs);
@@ -16,27 +15,42 @@ interface Partner {
   name: string;
 }
 
+interface ProjectUser {
+    id: string; 
+    partnerId: string;
+    user: {
+        id: string;
+        name: string;
+        surname: string;
+    }
+}
+
 interface TaskPartner {
   id: string;
   partnerId: string;
   role: string;
   partner: Partner;
+  responsibleUsers?: {
+      id: string;
+      name: string;
+      surname: string;
+  }[]
 }
 
 interface TaskPartnerManagerProps {
   taskId: string;
-  initialPartners?: TaskPartner[]; // Pre-loaded partners from DB
-  availablePartners: Partner[]; // All project partners
+  initialPartners?: TaskPartner[]; 
+  availablePartners: Partner[]; 
+  availableUsers?: ProjectUser[];
   className?: string;
 }
 
-export function TaskPartnerManager({ taskId, initialPartners = [], availablePartners, className }: TaskPartnerManagerProps) {
+export function TaskPartnerManager({ taskId, initialPartners = [], availablePartners, availableUsers = [], className }: TaskPartnerManagerProps) {
   const [partners, setPartners] = useState<TaskPartner[]>(initialPartners);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Close when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
@@ -47,6 +61,11 @@ export function TaskPartnerManager({ taskId, initialPartners = [], availablePart
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Sync with initialPartners
+  useEffect(() => {
+     setPartners(initialPartners);
+  }, [initialPartners]);
+
   const handleAddPartner = async (partnerId: string) => {
     if (loading) return;
     setLoading(true);
@@ -54,11 +73,11 @@ export function TaskPartnerManager({ taskId, initialPartners = [], availablePart
     const partner = availablePartners.find(p => p.id === partnerId);
     if (!partner) return;
     
-    // Default role: If no partners, first is LEAD, else BENEFICIARY
+    // Default role
     const newRole = partners.length === 0 ? "LEAD" : "BENEFICIARY";
 
     const optimId = "temp-" + Date.now();
-    const newEntry: TaskPartner = { id: optimId, partnerId, role: newRole, partner };
+    const newEntry: TaskPartner = { id: optimId, partnerId, role: newRole, partner, responsibleUsers: [] };
     setPartners([...partners, newEntry]);
 
     const res = await addTaskPartner({ taskId, partnerId, role: newRole });
@@ -86,23 +105,69 @@ export function TaskPartnerManager({ taskId, initialPartners = [], availablePart
   };
 
   const handleChangeRole = async (partnerId: string, newRole: string) => {
-     // Optimistic
+     const current = partners.find(p => p.partnerId === partnerId);
+     const currentResponsibleIds = current?.responsibleUsers?.map(u => u.id); 
+
      const oldPartners = [...partners];
      setPartners(partners.map(p => p.partnerId === partnerId ? { ...p, role: newRole } : p));
      
-     const res = await updateTaskPartnerRole(taskId, partnerId, newRole);
+     const res = await updateTaskPartnerRole(taskId, partnerId, newRole, currentResponsibleIds);
      if (!res.success) {
          setPartners(oldPartners);
          toast.error("Failed to update role");
      }
   };
 
+  const toggleResponsibleUser = async (partnerId: string, userId: string) => {
+    const currentPartner = partners.find(p => p.partnerId === partnerId);
+    if (!currentPartner) return;
+
+    const currentIds = currentPartner.responsibleUsers?.map(u => u.id) || [];
+    const isSelected = currentIds.includes(userId);
+    
+    let newIds: string[];
+    let newUsers: any[];
+
+    if (isSelected) {
+        newIds = currentIds.filter(id => id !== userId);
+        newUsers = currentPartner.responsibleUsers?.filter(u => u.id !== userId) || [];
+    } else {
+        newIds = [...currentIds, userId];
+        const userObj = availableUsers.find(u => u.user.id === userId)?.user;
+        if (userObj) {
+            newUsers = [...(currentPartner.responsibleUsers || []), userObj];
+        } else {
+            newUsers = currentPartner.responsibleUsers || [];
+        }
+    }
+
+    const oldPartners = [...partners];
+    
+    // Optimistic
+    setPartners(partners.map(p => {
+        if (p.partnerId === partnerId) {
+            return { 
+                ...p, 
+                responsibleUsers: newUsers
+            };
+        }
+        return p;
+    }));
+
+    const res = await updateTaskPartnerRole(taskId, partnerId, currentPartner.role, newIds);
+    if (!res.success) {
+        setPartners(oldPartners);
+        toast.error("Failed to update responsible persons");
+    }
+  };
+
+
   const availableToAdd = availablePartners.filter(ap => !partners.some(p => p.partnerId === ap.id));
 
   return (
-    <div className={cn("relative", className)} ref={popoverRef}>
+    <div className={cn("relative inline-block", className)} ref={popoverRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsOpen(!isOpen); }}
         className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 transition-colors border border-dashed border-slate-300 hover:border-indigo-300 rounded-full px-2 py-0.5 bg-white"
         title="Manage Task Partners"
       >
@@ -115,50 +180,93 @@ export function TaskPartnerManager({ taskId, initialPartners = [], availablePart
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-1 animate-in zoom-in-95 duration-200">
+        <div 
+            className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-1 animate-in zoom-in-95 duration-200 cursor-default"
+            onClick={(e) => e.stopPropagation()} 
+        >
             <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center border-b border-slate-100 mb-1">
                 <span>Task Partners</span>
                 <span className="bg-slate-100 text-slate-500 px-1.5 rounded-full">{partners.length}</span>
             </div>
 
             {/* Current List */}
-            <div className="max-h-48 overflow-y-auto custom-scrollbar">
+            <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
                 {partners.length === 0 && <div className="text-center py-4 text-xs text-slate-400">No partners assigned yet.</div>}
-                {partners.map(tp => (
-                    <div key={tp.partnerId} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded group">
-                        <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-700">{tp.partner.name}</span>
-                            <div className="flex gap-1 mt-1">
+                {partners.map(tp => {
+                    const isLead = tp.role === "LEAD" || tp.role === "CO_LEAD";
+                    // Filter users belonging to this partner
+                    const partnerUsers = availableUsers.filter(u => u.partnerId === tp.partnerId);
+
+                    return (
+                        <div key={tp.partnerId} className="flex flex-col p-2 hover:bg-slate-50 rounded group border-b border-slate-50 last:border-0">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold text-slate-700 truncate pr-2">{tp.partner.name}</span>
                                 <button 
-                                    onClick={() => handleChangeRole(tp.partnerId, "LEAD")}
-                                    className={cn("text-[9px] px-1 rounded border", tp.role === "LEAD" ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-white border-slate-200 text-slate-400 opacity-50 hover:opacity-100")}
+                                    onClick={() => handleRemovePartner(tp.partnerId)}
+                                    className="text-slate-300 hover:text-red-500 p-1 rounded-full hover:bg-red-50 flex-shrink-0"
+                                    title="Remove Partner"
+                                    aria-label="Remove Partner"
                                 >
-                                    LEAD
-                                </button>
-                                <button 
-                                     onClick={() => handleChangeRole(tp.partnerId, "CO_LEAD")}
-                                     className={cn("text-[9px] px-1 rounded border", tp.role === "CO_LEAD" ? "bg-violet-50 border-violet-200 text-violet-700" : "bg-white border-slate-200 text-slate-400 opacity-50 hover:opacity-100")}
-                                >
-                                    CO-LEAD
-                                </button>
-                                <button 
-                                     onClick={() => handleChangeRole(tp.partnerId, "BENEFICIARY")}
-                                     className={cn("text-[9px] px-1 rounded border", tp.role === "BENEFICIARY" ? "bg-slate-100 border-slate-200 text-slate-600" : "bg-white border-slate-200 text-slate-400 opacity-50 hover:opacity-100")}
-                                >
-                                    PARTNER
+                                    <X size={14} />
                                 </button>
                             </div>
+                            
+                            <div className="flex gap-1 mb-2">
+                                <RoleButton active={tp.role === "LEAD"} onClick={() => handleChangeRole(tp.partnerId, "LEAD")} label="LEAD" color="indigo" />
+                                <RoleButton active={tp.role === "CO_LEAD"} onClick={() => handleChangeRole(tp.partnerId, "CO_LEAD")} label="CO-LEAD" color="violet" />
+                                <RoleButton active={tp.role === "BENEFICIARY"} onClick={() => handleChangeRole(tp.partnerId, "BENEFICIARY")} label="PARTNER" color="slate" />
+                            </div>
+
+                             {/* Responsible Users (Multi-select) */}
+                             {isLead && (
+                                <div className="mt-1 pl-1 border-l-2 border-slate-100 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-1">
+                                        <User size={10} />
+                                        <span>Writing Leaders</span>
+                                    </div>
+                                    
+                                    {/* Selected Tags */}
+                                    {tp.responsibleUsers && tp.responsibleUsers.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mb-1.5">
+                                            {tp.responsibleUsers.map(u => (
+                                                <span key={u.id} className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                    {u.name} {u.surname && u.surname[0]}.
+                                                    <button onClick={() => toggleResponsibleUser(tp.partnerId, u.id)} className="hover:text-red-500" aria-label="Remove User"><X size={10}/></button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* User List with Checkboxes */}
+                                    <div className="max-h-24 overflow-y-auto border border-slate-100 rounded bg-slate-50/50 p-1">
+                                        {partnerUsers.length === 0 ? (
+                                            <div className="text-[10px] text-slate-400 italic p-1">No users found for this partner.</div>
+                                        ) : (
+                                            partnerUsers.map(u => {
+                                                const isSelected = tp.responsibleUsers?.some(ru => ru.id === u.user.id);
+                                                return (
+                                                    <div 
+                                                        key={u.user.id} 
+                                                        onClick={() => toggleResponsibleUser(tp.partnerId, u.user.id)}
+                                                        className={cn(
+                                                            "flex items-center gap-2 p-1 rounded cursor-pointer transition-colors text-xs",
+                                                            isSelected ? "bg-indigo-50 text-indigo-800" : "hover:bg-slate-100 text-slate-600"
+                                                        )}
+                                                    >
+                                                        <div className={cn("w-3 h-3 rounded border flex items-center justify-center", isSelected ? "bg-indigo-500 border-indigo-500" : "bg-white border-slate-300")}>
+                                                           {isSelected && <Check size={8} className="text-white" />}
+                                                        </div>
+                                                        <span className="truncate">{u.user.name} {u.user.surname}</span>
+                                                    </div>
+                                                )
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <button 
-                            onClick={() => handleRemovePartner(tp.partnerId)}
-                            className="text-slate-300 hover:text-red-500 p-1 rounded-full hover:bg-red-50"
-                            title="Remove Partner"
-                            aria-label="Remove Partner"
-                        >
-                            <X size={14} />
-                        </button>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Add New */}
@@ -182,4 +290,25 @@ export function TaskPartnerManager({ taskId, initialPartners = [], availablePart
       )}
     </div>
   );
+}
+
+function RoleButton({ active, onClick, label, color }: { active: boolean, onClick: () => void, label: string, color: string }) {
+    const colors: Record<string, string> = {
+        indigo: active ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-white border-slate-200 text-slate-400",
+        violet: active ? "bg-violet-50 border-violet-200 text-violet-700" : "bg-white border-slate-200 text-slate-400",
+        slate: active ? "bg-slate-100 border-slate-200 text-slate-600" : "bg-white border-slate-200 text-slate-400"
+    };
+
+    return (
+        <button 
+            onClick={onClick}
+            className={cn(
+                "text-[9px] px-1.5 py-0.5 rounded border transition-all flex-1 text-center font-medium", 
+                colors[color],
+                !active && "hover:border-slate-300 hover:text-slate-500"
+            )}
+        >
+            {label}
+        </button>
+    )
 }

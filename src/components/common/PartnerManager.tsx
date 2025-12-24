@@ -30,12 +30,11 @@ export interface EntityPartner {
   partnerId: string;
   role: string;
   partner: Partner;
-  responsibleUserId?: string;
-  responsibleUser?: {
+  responsibleUsers?: {
       id: string;
       name: string;
       surname: string;
-  }
+  }[]
 }
 
 interface PartnerManagerProps {
@@ -48,7 +47,12 @@ interface PartnerManagerProps {
   // Actions passed as props to allow generic usage
   onAdd: (id: string, partnerId: string) => Promise<{ success?: boolean; error?: string }>;
   onRemove: (id: string, partnerId: string) => Promise<{ success?: boolean; error?: string }>;
-  onUpdateRole: (id: string, partnerId: string, role: string, responsibleUserId?: string) => Promise<{ success?: boolean; error?: string }>;
+  onUpdateRole: (id: string, partnerId: string, role: string, responsibleUserIds?: string[]) => Promise<{ success?: boolean; error?: string }>;
+}
+
+// Helper to get initials
+function getInitials(name: string) {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
 }
 
 export function PartnerManager({ entityId, initialPartners = [], availablePartners, availableUsers = [], className, onAdd, onRemove, onUpdateRole }: PartnerManagerProps) {
@@ -82,7 +86,7 @@ export function PartnerManager({ entityId, initialPartners = [], availablePartne
     
     const newRole = partners.length === 0 ? "LEAD" : "BENEFICIARY";
     const optimId = "temp-" + Date.now();
-    const newEntry: EntityPartner = { id: optimId, partnerId, role: newRole, partner };
+    const newEntry: EntityPartner = { id: optimId, partnerId, role: newRole, partner, responsibleUsers: [] };
     setPartners([...partners, newEntry]);
 
     const res = await onAdd(entityId, partnerId);
@@ -110,51 +114,63 @@ export function PartnerManager({ entityId, initialPartners = [], availablePartne
   };
 
   const handleChangeRole = async (partnerId: string, newRole: string) => {
-     // When changing role, we might want to keep existing responsibleUserId if it makes sense, 
-     // but usually we just update the role.
+     // When changing role, we generally keep existing responsibleUsers
      const current = partners.find(p => p.partnerId === partnerId);
-     const currentResponsible = current?.responsibleUserId;
+     const currentResponsibleIds = current?.responsibleUsers?.map(u => u.id); // Assuming responsibleUsers is populated
 
      const oldPartners = [...partners];
      setPartners(partners.map(p => p.partnerId === partnerId ? { ...p, role: newRole } : p));
      
-     const res = await onUpdateRole(entityId, partnerId, newRole, currentResponsible);
+     const res = await onUpdateRole(entityId, partnerId, newRole, currentResponsibleIds);
      if (!res.success) {
          setPartners(oldPartners);
          toast.error("Failed to update role");
      }
   };
 
-  const handleChangeResponsibleUser = async (partnerId: string, userId: string) => {
-    const current = partners.find(p => p.partnerId === partnerId);
-    if (!current) return;
+  const toggleResponsibleUser = async (partnerId: string, userId: string) => {
+    const currentPartner = partners.find(p => p.partnerId === partnerId);
+    if (!currentPartner) return;
+
+    const currentIds = currentPartner.responsibleUsers?.map(u => u.id) || [];
+    const isSelected = currentIds.includes(userId);
+    
+    let newIds: string[];
+    let newUsers: any[];
+
+    if (isSelected) {
+        newIds = currentIds.filter(id => id !== userId);
+        newUsers = currentPartner.responsibleUsers?.filter(u => u.id !== userId) || [];
+    } else {
+        newIds = [...currentIds, userId];
+        const userObj = availableUsers.find(u => u.user.id === userId)?.user;
+        if (userObj) {
+            newUsers = [...(currentPartner.responsibleUsers || []), userObj];
+        } else {
+            newUsers = currentPartner.responsibleUsers || [];
+        }
+    }
 
     const oldPartners = [...partners];
     
     // Optimistic
     setPartners(partners.map(p => {
         if (p.partnerId === partnerId) {
-            // Find user details for display
-            const projectMember = availableUsers.find(u => u.user.id === userId);
-            // Note: Schema stores responsibleUserId as USER ID, not Member ID.
-            // My availableUsers array likely has ProjectMember objects.
-            // So userId passed here is the target User ID.
-            
             return { 
                 ...p, 
-                responsibleUserId: userId,
-                responsibleUser: projectMember ? projectMember.user : undefined
+                responsibleUsers: newUsers
             };
         }
         return p;
     }));
 
-    const res = await onUpdateRole(entityId, partnerId, current.role, userId);
+    const res = await onUpdateRole(entityId, partnerId, currentPartner.role, newIds);
     if (!res.success) {
         setPartners(oldPartners);
-        toast.error("Failed to update responsible person");
+        toast.error("Failed to update responsible persons");
     }
   };
+
 
   const availableToAdd = availablePartners.filter(ap => !partners.some(p => p.partnerId === ap.id));
 
@@ -184,7 +200,7 @@ export function PartnerManager({ entityId, initialPartners = [], availablePartne
             </div>
 
             {/* Current List */}
-            <div className="max-h-64 overflow-y-auto custom-scrollbar">
+            <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
                 {partners.length === 0 && <div className="text-center py-4 text-xs text-slate-400">No partners assigned yet.</div>}
                 {partners.map(tp => {
                     const isLead = tp.role === "LEAD" || tp.role === "CO_LEAD";
@@ -210,26 +226,51 @@ export function PartnerManager({ entityId, initialPartners = [], availablePartne
                                 <RoleButton active={tp.role === "BENEFICIARY"} onClick={() => handleChangeRole(tp.partnerId, "BENEFICIARY")} label="PARTNER" color="slate" />
                             </div>
 
-                            {/* Responsible User Selector (Only for Leads) */}
+                            {/* Responsible Users (Multi-select) */}
                             {isLead && (
-                                <div className="mt-1 pl-1 border-l-2 border-slate-100">
+                                <div className="mt-1 pl-1 border-l-2 border-slate-100 space-y-1">
                                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-1">
                                         <User size={10} />
-                                        <span>Writing Lead / Contact</span>
+                                        <span>Writing Leaders</span>
                                     </div>
-                                    <select 
-                                        aria-label="Select Responsible Person"
-                                        className="w-full text-xs p-1.5 rounded border border-slate-200 bg-white focus:outline-none focus:border-indigo-300"
-                                        value={tp.responsibleUserId || ""}
-                                        onChange={(e) => handleChangeResponsibleUser(tp.partnerId, e.target.value)}
-                                    >
-                                        <option value="">Select person...</option>
-                                        {partnerUsers.map(u => (
-                                            <option key={u.user.id} value={u.user.id}>
-                                                {u.user.name} {u.user.surname}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    
+                                    {/* Selected Tags */}
+                                    {tp.responsibleUsers && tp.responsibleUsers.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mb-1.5">
+                                            {tp.responsibleUsers.map(u => (
+                                                <span key={u.id} className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                    {u.name} {u.surname && u.surname[0]}.
+                                                    <button onClick={() => toggleResponsibleUser(tp.partnerId, u.id)} className="hover:text-red-500" aria-label="Remove User"><X size={10}/></button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* User List with Checkboxes */}
+                                    <div className="max-h-24 overflow-y-auto border border-slate-100 rounded bg-slate-50/50 p-1">
+                                        {partnerUsers.length === 0 ? (
+                                            <div className="text-[10px] text-slate-400 italic p-1">No users found for this partner.</div>
+                                        ) : (
+                                            partnerUsers.map(u => {
+                                                const isSelected = tp.responsibleUsers?.some(ru => ru.id === u.user.id);
+                                                return (
+                                                    <div 
+                                                        key={u.user.id} 
+                                                        onClick={() => toggleResponsibleUser(tp.partnerId, u.user.id)}
+                                                        className={cn(
+                                                            "flex items-center gap-2 p-1 rounded cursor-pointer transition-colors text-xs",
+                                                            isSelected ? "bg-indigo-50 text-indigo-800" : "hover:bg-slate-100 text-slate-600"
+                                                        )}
+                                                    >
+                                                        <div className={cn("w-3 h-3 rounded border flex items-center justify-center", isSelected ? "bg-indigo-500 border-indigo-500" : "bg-white border-slate-300")}>
+                                                           {isSelected && <Check size={8} className="text-white" />}
+                                                        </div>
+                                                        <span className="truncate">{u.user.name} {u.user.surname}</span>
+                                                    </div>
+                                                )
+                                            })
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

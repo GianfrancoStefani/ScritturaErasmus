@@ -4,13 +4,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { generatePDF, PDFConfig } from "@/lib/pdf-generator";
-import { Check, FileText, ChevronRight, ChevronDown, Layers, File, Settings, Palette } from "lucide-react";
+import { Check, FileText, ChevronRight, ChevronDown, Layers, File, Settings, Palette, Loader2 } from "lucide-react";
 
 interface ExportConfiguratorProps {
     project: any;
 }
 
 export function ExportConfigurator({ project }: ExportConfiguratorProps) {
+    const [loading, setLoading] = useState(false);
+
     // Initial ID collection (select all by default?)
     const getAllIds = () => {
         const ids: string[] = [];
@@ -36,7 +38,9 @@ export function ExportConfigurator({ project }: ExportConfiguratorProps) {
             includeComments: false,
             includeCover: true,
             includeTOC: true,
-            includePartners: true,
+            includeBudget: true,
+            includeGantt: true,
+            includeContent: true,
         },
         style: {
             theme: 'modern',
@@ -273,9 +277,28 @@ export function ExportConfigurator({ project }: ExportConfiguratorProps) {
                     <Button 
                         size="lg" 
                         className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200"
-                        onClick={() => generatePDF(project, config)}
+                        onClick={async () => {
+                            setLoading(true);
+                            try {
+                                await generatePDF(project, config);
+                            } catch (error) {
+                                console.error(error);
+                                // toast.error("Failed to generate PDF"); 
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                        disabled={loading}
                     >
-                        <FileText size={18} className="mr-2" /> Generate PDF Report
+                        {loading ? (
+                            <>
+                                <Loader2 size={18} className="mr-2 animate-spin" /> Generating...
+                            </>
+                        ) : (
+                            <>
+                                <FileText size={18} className="mr-2" /> Generate PDF Report
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>

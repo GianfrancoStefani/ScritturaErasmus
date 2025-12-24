@@ -126,76 +126,124 @@ export async function cloneWork(workId: string, projectId: string) {
       return { error: "Work package not found" };
     }
 
-    await prisma.work.create({
-      data: {
-        projectId: projectId,
-        sectionId: originalWork.sectionId,
-        title: `${originalWork.title} (Copy)`,
-        budget: originalWork.budget,
-        startDate: originalWork.startDate,
-        endDate: originalWork.endDate,
-        description: originalWork.description,
-        modules: {
-          create: originalWork.modules.map((m) => ({
-            title: m.title,
-            subtitle: m.subtitle,
-            officialText: m.officialText,
-            status: "TO_DONE",
-            order: m.order,
-            type: m.type,
-            options: m.options,
-            maxChars: m.maxChars,
-            maxSelections: m.maxSelections,
-            guidelines: m.guidelines
-          })),
-        },
-        tasks: {
-          create: originalWork.tasks.map((t) => ({
-            title: t.title,
-            budget: t.budget,
-            startDate: t.startDate,
-            endDate: t.endDate,
+    await prisma.$transaction(async (tx) => {
+        // 1. Create Work Copy
+        const newWork = await tx.work.create({
+          data: {
+            projectId: projectId,
+            sectionId: originalWork.sectionId,
+            title: `${originalWork.title} (Copy)`,
+            budget: originalWork.budget,
+            startDate: originalWork.startDate,
+            endDate: originalWork.endDate,
+            description: originalWork.description,
             modules: {
-              create: t.modules.map((tm) => ({
-                 title: tm.title,
-                 subtitle: tm.subtitle,
-                 officialText: tm.officialText,
-                 status: "TO_DONE",
-                 order: tm.order,
-                 type: tm.type,
-                 options: tm.options,
-                 maxChars: tm.maxChars,
-                 maxSelections: tm.maxSelections,
-                 guidelines: tm.guidelines
+              create: originalWork.modules.map((m) => ({
+                title: m.title,
+                subtitle: m.subtitle,
+                officialText: m.officialText,
+                status: "TO_DONE",
+                order: m.order,
+                type: m.type,
+                options: m.options,
+                maxChars: m.maxChars,
+                maxSelections: m.maxSelections,
+                guidelines: m.guidelines
               })),
             },
-            activities: {
-              create: t.activities.map((a) => ({
-                title: a.title,
-                venue: a.venue,
-                estimatedStartDate: a.estimatedStartDate,
-                estimatedEndDate: a.estimatedEndDate,
-                allocatedAmount: a.allocatedAmount,
-                expectedResults: a.expectedResults,
-                modules: {
-                   create: a.modules.map((am) => ({
-                     title: am.title,
-                     subtitle: am.subtitle,
-                     officialText: am.officialText,
-                     status: "TO_DONE",
-                     order: am.order,
-                     type: am.type,
-                     options: am.options,
-                     maxChars: am.maxChars,
-                     maxSelections: am.maxSelections,
-                     guidelines: am.guidelines
-                   })),
+          },
+        });
+
+        // 2. Clone Work Partners
+        const workPartners = await tx.workPartner.findMany({
+            where: { workId: originalWork.id },
+            include: { responsibleUsers: true }
+        });
+
+        for (const wp of workPartners) {
+            await tx.workPartner.create({
+                data: {
+                    workId: newWork.id,
+                    partnerId: wp.partnerId,
+                    role: wp.role,
+                    budget: wp.budget,
+                    responsibleUsers: {
+                        connect: wp.responsibleUsers.map(u => ({ id: u.id }))
+                    }
                 }
-              })),
-            },
-          })),
-        },
-      },
+            });
+        }
+
+        // 3. Clone Tasks and their Partners
+        for (const t of originalWork.tasks) {
+            const newTask = await tx.task.create({
+                data: {
+                    workId: newWork.id,
+                    title: t.title,
+                    budget: t.budget,
+                    startDate: t.startDate,
+                    endDate: t.endDate,
+                    modules: {
+                        create: t.modules.map((tm) => ({
+                            title: tm.title,
+                            subtitle: tm.subtitle,
+                            officialText: tm.officialText,
+                            status: "TO_DONE",
+                            order: tm.order,
+                            type: tm.type,
+                            options: tm.options,
+                            maxChars: tm.maxChars,
+                            maxSelections: tm.maxSelections,
+                            guidelines: tm.guidelines
+                        })),
+                    },
+                    activities: {
+                        create: t.activities.map((a) => ({
+                            title: a.title,
+                            venue: a.venue,
+                            estimatedStartDate: a.estimatedStartDate,
+                            estimatedEndDate: a.estimatedEndDate,
+                            allocatedAmount: a.allocatedAmount,
+                            expectedResults: a.expectedResults,
+                            modules: {
+                                create: a.modules.map((am) => ({
+                                    title: am.title,
+                                    subtitle: am.subtitle,
+                                    officialText: am.officialText,
+                                    status: "TO_DONE",
+                                    order: am.order,
+                                    type: am.type,
+                                    options: am.options,
+                                    maxChars: am.maxChars,
+                                    maxSelections: am.maxSelections,
+                                    guidelines: am.guidelines
+                                })),
+                            }
+                        })),
+                    },
+                }
+            });
+
+            // Clone Task Partners
+            const taskPartners = await tx.taskPartner.findMany({
+                where: { taskId: t.id },
+                include: { responsibleUsers: true }
+            });
+
+            for (const tp of taskPartners) {
+                await tx.taskPartner.create({
+                    data: {
+                        taskId: newTask.id,
+                        partnerId: tp.partnerId,
+                        role: tp.role,
+                        budget: tp.budget,
+                        responsibleUsers: {
+                            connect: tp.responsibleUsers.map(u => ({ id: u.id }))
+                        }
+                    }
+                });
+            }
+        }
     });
 
     revalidatePath(`/dashboard/projects/${projectId}`);
