@@ -5,10 +5,17 @@ import { useState } from "react";
 export function PartnerLogo({ logo, name, className = "" }: { logo?: string | null, name: string, className?: string }) {
     const [error, setError] = useState(false);
 
-    if (logo && (logo.startsWith('http') || logo.startsWith('/')) && !error) {
+    const isValidImage = (url: string | null | undefined) => {
+        if (!url) return false;
+        if (!url.startsWith('http') && !url.startsWith('/')) return false;
+        // Basic check for image extensions to avoid loading websites as images
+        return /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(url);
+    };
+
+    if (isValidImage(logo) && !error) {
         return (
             <img 
-                src={logo} 
+                src={logo!} 
                 alt={name} 
                 className={className} 
                 onError={() => setError(true)}

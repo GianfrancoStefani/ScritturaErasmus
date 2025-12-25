@@ -108,13 +108,13 @@ function PartnerItem({ partner }: { partner: PartnerData }) {
                     {partner.users.map(user => (
                         <div key={user.id} className="flex items-center justify-between group py-1">
                              <div className="flex items-center gap-3">
-                                 {user.photo ? (
-                                    <img src={user.photo} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
-                                 ) : (
-                                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                        {user.name.charAt(0)}{user.surname.charAt(0)}
-                                    </div>
-                                 )}
+                                 <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 text-xs font-bold text-slate-600">
+                                     {user.photo && (user.photo.startsWith('http') || user.photo.startsWith('/')) && /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(user.photo) ? (
+                                         <img src={user.photo} alt={`${user.name} ${user.surname}`} className="w-full h-full object-cover" />
+                                     ) : (
+                                         `${user.name.charAt(0)}${user.surname.charAt(0)}`
+                                     )}
+                                 </div>
                                  <div>
                                      <p className="text-sm font-medium text-slate-700">{user.prefix} {user.name} {user.surname}</p>
                                      <div className="flex items-center gap-1 text-xs text-slate-400">

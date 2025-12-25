@@ -3,17 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// --- Role Definitions ---
-export const ROLES = {
-    PROJECT_MANAGER: "PROJECT_MANAGER",
-    SCIENTIFIC_SUPERVISOR: "SCIENTIFIC_SUPERVISOR",
-    WP_MANAGER: "WP_MANAGER",
-    SECTOR_MANAGER: "SECTOR_MANAGER",
-    TASK_MANAGER: "TASK_MANAGER",
-    ACTIVITY_MANAGER: "ACTIVITY_MANAGER",
-    EDITOR: "EDITOR",
-    USER: "USER"
-};
+import { ROLES } from "@/lib/constants";
 
 // --- Invite User ---
 export async function inviteUser(
@@ -105,9 +95,32 @@ export async function updateMemberPermissions(memberId: string, projectId: strin
 // --- Update Member Profile (Project Specific) ---
 export async function updateMemberProfile(memberId: string, projectId: string, data: {
     customDailyRate?: number;
-    // We could add more fields here like internal job title
 }) {
     try {
+        // Handle Legacy Member "Promotion" to Real Member
+        if (memberId.startsWith('legacy-')) {
+            const parts = memberId.split('-');
+            if (parts.length < 3) return { error: "Invalid legacy member ID" };
+            
+            const userId = parts[1];
+            const partnerId = parts[2];
+
+            // Create new ProjectMember record
+            await prisma.projectMember.create({
+                data: {
+                    userId,
+                    projectId,
+                    partnerId,
+                    roles: ["USER"], // Default role upon promotion
+                    customDailyRate: data.customDailyRate
+                }
+            });
+             
+            revalidatePath(`/dashboard/projects/${projectId}/team`);
+            return { success: true };
+        }
+
+        // Standard Update
         await prisma.projectMember.update({
             where: { id: memberId },
             data: {
@@ -118,6 +131,7 @@ export async function updateMemberProfile(memberId: string, projectId: string, d
         revalidatePath(`/dashboard/projects/${projectId}/team`);
         return { success: true };
     } catch (error) {
+        console.error("Update Profile Error:", error);
         return { error: "Failed to update profile." };
     }
 }
@@ -153,6 +167,49 @@ export async function saveUserAvailability(userId: string, year: number, monthVa
 
 // --- Get Detailed Member Info ---
 export async function getProjectMemberDetails(memberId: string) {
+    // Handle Legacy / Virtual Members
+    if (memberId.startsWith('legacy-')) {
+        // Format: legacy-userId-partnerId
+        const parts = memberId.split('-');
+        // Safety check
+        if (parts.length < 3) return null;
+        
+        const userId = parts[1];
+        const partnerId = parts.slice(2).join('-'); // Handle case if partnerId has hyphens? No, usually CUID/UUID. but safe to join.
+        // Actually partnerId is usually just the last part if not CUID. CUIDs don't have hyphens. UUIDs do.
+        // Better: parts[1] is user, rest is partner? 
+        // My generation was `legacy-${user.id}-${partner.id}`.
+        // User ID (CUID) has no hyphens. Partner ID (CUID) has no hyphens.
+        // So parts[1] is User, parts[2] is Partner.
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                availabilities: true
+            }
+        });
+        
+        const partner = await prisma.partner.findUnique({
+             where: { id: parts[2] } // parts[2]
+        });
+
+        if (!user || !partner) return null;
+
+        // Return Virtual Member
+        return {
+            id: memberId,
+            userId: user.id,
+            projectId: partner.projectId,
+            partnerId: partner.id,
+            roles: ["USER"], // Default fallback
+            projectRole: "Member",
+            customDailyRate: null,
+            user: user,
+            partner: partner
+        };
+    }
+
+    // Handle Real Members
     const member = await prisma.projectMember.findUnique({
         where: { id: memberId },
         include: {

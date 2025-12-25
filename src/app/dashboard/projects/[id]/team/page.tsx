@@ -1,21 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { getProjectMembers } from "@/app/actions/project"; 
-import { inviteUser, updateMemberPermissions, ROLES } from "@/app/actions/user-management";
+import { getAllProjects, getProjectMembers } from "@/app/actions/project"; 
+import { inviteUser, updateMemberPermissions } from "@/app/actions/user-management";
+import { ROLES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { User, Shield, Mail, Edit, MoreHorizontal, Settings } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import clsx from "clsx";
 
 export default function TeamDashboard({ params }: { params: { id: string } }) {
-    // Note: In real app, we fetch initial data via RSC. For client component simplicity here:
-    // We assume data is passed or fetched. Let's make this page fetch in useEffect or convert to Server Component.
-    // For now, I will write it as a Server Component that uses Client Components for interactivity.
-    // But since I don't have easy file separation within one tool call, I'll write a Client Component structure 
-    // that fetches data on mount for simplicity in prototype, or pure Server Component if possible.
-    // Let's do Server Component + Client List.
-    
     return (
         <div className="p-8 max-w-6xl mx-auto">
              <header className="flex items-center justify-between mb-8">
@@ -23,7 +18,6 @@ export default function TeamDashboard({ params }: { params: { id: string } }) {
                     <h1 className="text-3xl font-black text-slate-900">Team Management</h1>
                     <p className="text-slate-500">Manage partners, roles, and permissions.</p>
                 </div>
-                {/* Invite Button would open a Modal */}
                 <InviteButton projectId={params.id} />
              </header>
 
@@ -33,7 +27,6 @@ export default function TeamDashboard({ params }: { params: { id: string } }) {
 }
 
 function InviteButton({ projectId }: { projectId: string }) {
-    // This would ideally overlap a Dialog. For brevity, generic button.
     return (
         <Button>
             <Mail size={16} className="mr-2" /> Invite New Member
@@ -45,11 +38,16 @@ import { useEffect } from "react";
 
 function TeamList({ projectId }: { projectId: string }) {
     const [members, setMembers] = useState<any[]>([]);
+    const [projects, setProjects] = useState<any[]>([]); // For Tabs
     const [loading, setLoading] = useState(true);
 
     const load = async () => {
-        const res = await getProjectMembers(projectId);
-        setMembers(res);
+        const [membersRes, projectsRes] = await Promise.all([
+            getProjectMembers(projectId),
+            getAllProjects()
+        ]);
+        setMembers(membersRes);
+        setProjects(projectsRes);
         setLoading(false);
     };
 
@@ -58,22 +56,48 @@ function TeamList({ projectId }: { projectId: string }) {
     if (loading) return <div>Loading team...</div>;
 
     return (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                        <th className="p-4 font-bold text-slate-600">User</th>
-                        <th className="p-4 font-bold text-slate-600">Partner</th>
-                        <th className="p-4 font-bold text-slate-600">Roles</th>
-                        <th className="p-4 font-bold text-slate-600 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {members.map(m => (
-                        <MemberRow key={m.id} member={m} projectId={projectId} onUpdate={load} />
-                    ))}
-                </tbody>
-            </table>
+        <div className="space-y-6">
+            {/* PROJECT TABS */}
+            {projects.length > 1 && (
+                 <div className="border-b border-slate-200">
+                     <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
+                         {projects.map((proj) => (
+                             <Link
+                                 key={proj.id}
+                                 href={`/dashboard/projects/${proj.id}/team`}
+                                 title={proj.title}
+                                 className={clsx(
+                                     proj.id === projectId
+                                         ? 'border-indigo-500 text-indigo-600'
+                                         : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                                     'whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center gap-2'
+                                 )}
+                             >
+                                 <span className={clsx("w-2 h-2 rounded-full", proj.id === projectId ? "bg-indigo-600" : "bg-slate-300")} />
+                                 {proj.acronym || proj.title}
+                             </Link>
+                         ))}
+                     </nav>
+                 </div>
+             )}
+
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th className="p-4 font-bold text-slate-600">User</th>
+                            <th className="p-4 font-bold text-slate-600">Partner</th>
+                            <th className="p-4 font-bold text-slate-600">Roles</th>
+                            <th className="p-4 font-bold text-slate-600 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {members.map(m => (
+                            <MemberRow key={m.id} member={m} projectId={projectId} onUpdate={load} />
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -104,8 +128,12 @@ function MemberRow({ member, projectId, onUpdate }: { member: any, projectId: st
         <tr className="hover:bg-slate-50/50">
             <td className="p-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-                        {member.user.name[0]}{member.user.surname[0]}
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold overflow-hidden">
+                        {member.user.photo && (member.user.photo.startsWith('http') || member.user.photo.startsWith('/')) && /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(member.user.photo) ? (
+                             <img src={member.user.photo} alt={member.user.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <>{member.user.name[0]}{member.user.surname[0]}</>
+                        )}
                     </div>
                     <div>
                         <div className="font-bold text-slate-800">{member.user.name} {member.user.surname}</div>

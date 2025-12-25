@@ -13,13 +13,46 @@ export default async function PartnersPage({ params }: { params: { id: string } 
         where: { id: params.id },
         include: {
             partners: {
-                include: { users: true },
+                include: { 
+                    users: true,
+                    projectMembers: {
+                        include: { user: true },
+                        orderBy: { createdAt: 'asc' }
+                    }
+                },
                 orderBy: { createdAt: 'desc' }
             }
         }
     });
 
     if (!project) return <div>Project not found</div>;
+
+    // Transform partners to include project-specific members
+    const partners = project.partners.map((p: any) => {
+        // Map project members to the UserData shape, using the project-specific role
+        const projectUsers = p.projectMembers.map((pm: any) => ({
+            ...pm.user,
+            role: pm.role, // Use project role
+            partnerId: p.id // Force context partner ID
+        }));
+
+        // Legacy users
+        const legacyUsers = p.users.map((u: any) => ({
+            ...u,
+            role: u.role || 'Member',
+            partnerId: p.id
+        }));
+
+        // Merge and Deduplicate (prioritize project members)
+        const allUsers = [...projectUsers, ...legacyUsers].filter((obj: any, index: number, self: any[]) =>
+            index === self.findIndex((t: any) => (t.id === obj.id))
+        );
+
+        return {
+            ...p,
+            users: allUsers
+        };
+    });
 
     return (
         <div className="bg-slate-50 min-h-screen">
@@ -43,7 +76,7 @@ export default async function PartnersPage({ params }: { params: { id: string } 
                     </div>
                 </div>
 
-                <PartnerTree partners={project.partners} />
+                <PartnerTree partners={partners} />
              </div>
         </div>
     );

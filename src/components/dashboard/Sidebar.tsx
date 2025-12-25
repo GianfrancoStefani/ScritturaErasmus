@@ -36,32 +36,34 @@ export function Sidebar({ projects = [] }: { projects?: any[] }) {
   const projectId = projectMatch ? projectMatch[1] : null;
 
   const currentNavItems = navItems.reduce((acc: any[], item) => {
-      // Contextualize Partners Link
+      // Contextualize Works Link (Keep replacement behavior for Works as requested/default)
+      if (item.label === 'Works & Budget' && projectId) {
+           acc.push({
+              ...item,
+              href: `/dashboard/projects/${projectId}`, 
+              activeMatch: (path: string) => path === `/dashboard/projects/${projectId}` || path.startsWith(`/dashboard/projects/${projectId}/works`)
+           });
+           return acc;
+      }
+
+      // Contextualize Partners Link (REPLACEMENT logic)
       if (item.label === 'Partners' && projectId) {
           acc.push({
-              ...item,
-              label: 'Project Partners',
               href: `/dashboard/projects/${projectId}/partners`,
+              label: 'Project Partners',
+              icon: Users,
               activeMatch: (path: string) => path.startsWith(`/dashboard/projects/${projectId}/partners`)
           });
-          // Add Team Link after Partners
           acc.push({
              href: `/dashboard/projects/${projectId}/team`,
              label: 'Project Team',
              icon: Users,
              activeMatch: (path: string) => path.startsWith(`/dashboard/projects/${projectId}/team`)
           });
-          return acc;
+          return acc; // Skip adding the global 'Partners' item
       }
-      // Contextualize Works Link
-      if (item.label === 'Works & Budget' && projectId) {
-           acc.push({
-              ...item,
-              href: `/dashboard/projects/${projectId}`, // User asked for this specific redirect
-              activeMatch: (path: string) => path === `/dashboard/projects/${projectId}` || path.startsWith(`/dashboard/projects/${projectId}/works`)
-           });
-           return acc;
-      }
+
+      // Always add the Global Item if not replaced
       acc.push(item);
       return acc;
   }, []);
