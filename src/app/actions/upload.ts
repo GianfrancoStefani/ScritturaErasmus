@@ -23,7 +23,13 @@ export async function uploadFile(formData: FormData) {
   try {
     await writeFile(path, buffer);
     const url = `/uploads/${filename}`;
-    return { success: true, url };
+    return { 
+        success: true, 
+        url,
+        name: file.name,
+        size: file.size,
+        type: file.type
+    };
   } catch (error) {
     console.error("Upload error:", error);
     return { error: "Upload failed" };

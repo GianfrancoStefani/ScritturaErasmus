@@ -44,8 +44,9 @@ export function ContributionStream({
     const [orderedComponents, setOrderedComponents] = useState(components);
 
     // Sync if server props change (but respect local optimisitc updates until reload)
+    // Also filter out 'ANNOTATION' type components as requested
     useEffect(() => {
-        setOrderedComponents(components);
+        setOrderedComponents(components.filter(c => c.type !== 'ANNOTATION' && c.type !== 'drawing' && c.type !== 'highlight'));
     }, [components]);
 
     const sensors = useSensors(

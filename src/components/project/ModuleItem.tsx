@@ -11,15 +11,22 @@ import { EditModuleButton } from "@/components/modules/ModuleForm";
 import { deleteModule } from "@/app/actions/deleteModule";
 import { SelectionPopup } from "@/components/ui/SelectionPopup";
 import { updateModuleStatus, updateOfficialText } from "@/app/actions/module-editor";
-import { moveModule } from "@/app/actions/reorder"; // Import moveModule
+import { moveModule } from "@/app/actions/reorder"; 
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
+import { Modal } from "@/components/ui/Modal";
+import { ModuleAttachments } from "@/components/modules/ModuleAttachments";
+import { translateText } from "@/app/actions/translate";
 
 export function ModuleItem({ module, projectId, isFirst, isLast, onMove }: { module: any, projectId: string, isFirst?: boolean, isLast?: boolean, onMove?: (moduleId: string, direction: 'UP' | 'DOWN') => void }) {
     const [isOpen, setIsOpen] = useState(false);
     const [isStatusPopupOpen, setIsStatusPopupOpen] = useState(false);
     const [isSelectionPopupOpen, setIsSelectionPopupOpen] = useState(false);
+    const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
     const [isMoving, setIsMoving] = useState(false);
+    const [isTranslated, setIsTranslated] = useState(false);
+    const [translatedText, setTranslatedText] = useState<string | null>(null);
+    const [isTranslating, setIsTranslating] = useState(false);
     const router = useRouter();
 
     const {
@@ -41,7 +48,6 @@ export function ModuleItem({ module, projectId, isFirst, isLast, onMove }: { mod
 
     const handleStatusChange = async (selected: string[]) => {
         if (selected.length > 0) {
-            // Optimistic update could go here
             await updateModuleStatus(module.id, selected[0]);
             router.refresh();
         }
@@ -49,10 +55,8 @@ export function ModuleItem({ module, projectId, isFirst, isLast, onMove }: { mod
     
     const handleMove = async (direction: 'UP' | 'DOWN') => {
         if (onMove) {
-            // Optimistic move handled by parent
             onMove(module.id, direction);
         } else {
-            // Fallback (legacy or standalone usage)
             setIsMoving(true);
             await moveModule(module.id, direction, projectId);
             router.refresh();
@@ -86,7 +90,7 @@ export function ModuleItem({ module, projectId, isFirst, isLast, onMove }: { mod
             >
                 {/* Header Row */}
                 <div className="flex items-center p-2 gap-3">
-                    {/* Manual Move Controls (Visible on Hover or always?) Let's make them always visible but subtle */}
+                    {/* Manual Move Controls */}
                     <div className="flex flex-col -gap-1 mr-1">
                          <button 
                             disabled={isFirst || isMoving}
@@ -130,26 +134,35 @@ export function ModuleItem({ module, projectId, isFirst, isLast, onMove }: { mod
                                     {currentStatusLabel}
                                 </button>
 
-                                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded flex-shrink-0">{module.completion}%</span>
-                            </div>
-                            
-                            {/* POPUP: Render as Dropdown Trigger */}
-                            {isPopup ? (
-                                <div 
-                                    onClick={() => setIsSelectionPopupOpen(true)}
-                                    className="cursor-pointer border border-yellow-300 bg-white rounded px-2 py-1 flex items-center justify-between text-xs text-slate-700 hover:border-yellow-400 transition-colors w-full max-w-sm h-auto"
-                                >
-                                    <span className="whitespace-normal break-words pr-2">
-                                        {module.officialText || "Select options..."}
+                                    {/* Calculated Completion % */}
+                                    <span className={clsx(
+                                        "text-[10px] px-1.5 rounded flex-shrink-0 font-bold",
+                                        Math.round(((module.officialText || "").replace(/<[^>]+>/g, '').length / (module.maxCharacters || 3000)) * 100) > 100 
+                                            ? "bg-red-100 text-red-600" 
+                                            : "bg-slate-100 text-slate-500"
+                                    )}>
+                                        {Math.round(((module.officialText || "").replace(/<[^>]+>/g, '').length / (module.maxCharacters || 3000)) * 100)}%
                                     </span>
-                                    <ChevronDown size={14} className="text-slate-400 flex-shrink-0" />
                                 </div>
-                            ) : (
-                                module.subtitle && <p className="text-xs text-slate-400 truncate">{module.subtitle}</p>
-                            )}
+                                
+                                {/* POPUP: Render as Dropdown Trigger */}
+                                {isPopup ? (
+                                    <div 
+                                        onClick={() => setIsSelectionPopupOpen(true)}
+                                        className="cursor-pointer border border-yellow-300 bg-white rounded px-2 py-1 flex items-center justify-between text-xs text-slate-700 hover:border-yellow-400 transition-colors w-full max-w-sm h-auto"
+                                    >
+                                        <span className="whitespace-normal break-words pr-2">
+                                            {module.officialText || "Select options..."}
+                                        </span>
+                                        <ChevronDown size={14} className="text-slate-400 flex-shrink-0" />
+                                    </div>
+                                ) : (
+                                    <>
+                                        {module.subtitle && <p className="text-xs text-slate-400 truncate mb-2">{module.subtitle}</p>}
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
-
 
                 {/* Status & Actions */}
                 <div className="flex items-center gap-3 ml-2">
@@ -172,9 +185,17 @@ export function ModuleItem({ module, projectId, isFirst, isLast, onMove }: { mod
             {/* Expanded Detail */}
             {isOpen && (
                 <div className="p-4 pt-0 border-t border-slate-50 bg-slate-50/30">
+                     {/* PREVIEW MODE (Official Text) */}
+                     {!isPopup && module.officialText && (
+                        <div className="mt-3 bg-slate-50 border border-slate-200 rounded p-4 text-sm text-slate-700 leading-relaxed shadow-sm">
+                            <div className="text-[10px] uppercase font-bold text-slate-400 mb-2">Extended Preview</div>
+                            <div dangerouslySetInnerHTML={{ __html: module.officialText }} />
+                        </div>
+                     )}
+
                      <div className="mt-3 flex justify-between items-end">
                          <div className="space-y-2">
-                             {/* Additional Details could go here */}
+                             {/* Additional Details */}
                              {!isPopup && (
                                  <div className="text-xs text-slate-500">
                                      <strong>Max Chars:</strong> {module.maxChars}
@@ -185,8 +206,28 @@ export function ModuleItem({ module, projectId, isFirst, isLast, onMove }: { mod
                                      <strong>Max Selections:</strong> {module.maxSelections || 1}
                                  </div>
                              )}
-                             <div className="text-xs text-slate-500">
-                                 <strong>Guidelines:</strong> <span className="italic">{module.guidelines ? "Yes" : "No"}</span>
+                            
+                             <div className="text-xs text-slate-500 flex items-center gap-4">
+                                <span>
+                                    <strong>Guidelines:</strong> {module.guidelines ? (
+                                        <button 
+                                          onClick={() => setIsGuidelinesOpen(true)} 
+                                          className="text-indigo-600 font-bold underline ml-1 hover:text-indigo-800"
+                                        >
+                                          View
+                                        </button>
+                                    ) : "No"}
+                                </span>
+
+                                {/* Attachments Section - Inline */}
+                                <div className="flex items-center gap-1">
+                                    <strong>Attachments:</strong>
+                                    <ModuleAttachments 
+                                        moduleId={module.id} 
+                                        initialAttachments={module.attachments || []} 
+                                        compact={true}
+                                    />
+                                </div>
                              </div>
                          </div>
                          
@@ -224,6 +265,48 @@ export function ModuleItem({ module, projectId, isFirst, isLast, onMove }: { mod
             onConfirm={handleStatusChange}
             multiSelect={false}
         />
+
+        <Modal isOpen={isGuidelinesOpen} onClose={() => setIsGuidelinesOpen(false)} title="Module Guidelines">
+             <div className="p-4 bg-amber-50 rounded-lg text-sm text-amber-900 border border-amber-200 relative min-h-[100px]">
+                <div className="absolute top-2 right-2 z-10">
+                    <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-amber-700 hover:bg-amber-100 h-6 px-2 text-xs"
+                        onClick={async () => {
+                            if (!isTranslated && !translatedText) {
+                                setIsTranslating(true);
+                                const res = await translateText(module.guidelines, "IT"); // Default to IT or grab from context if available
+                                setIsTranslating(false);
+                                if (res.success) {
+                                    setTranslatedText(res.text);
+                                    setIsTranslated(true);
+                                } else {
+                                    alert("Translation failed: " + res.error);
+                                }
+                            } else {
+                                setIsTranslated(!isTranslated);
+                            }
+                        }}
+                        disabled={isTranslating}
+                    >
+                         {isTranslating ? "Translating..." : isTranslated ? "Show Original" : "Translate"}
+                    </Button>
+                </div>
+                {isTranslated && translatedText ? (
+                     <div className="animate-in fade-in duration-300">
+                        <p className="text-[10px] uppercase font-bold text-amber-500 mb-1">
+                             Italian (Translated)
+                        </p>
+                        <p className="whitespace-pre-wrap italic">
+                            {translatedText}
+                        </p>
+                    </div>
+                ) : (
+                    <p className={clsx("whitespace-pre-wrap pt-4", isTranslating && "opacity-50 blur-[1px]")}>{module.guidelines}</p>
+                )}
+            </div>
+        </Modal>
 
         {module.type === 'POPUP' && module.options && (
             <SelectionPopup 

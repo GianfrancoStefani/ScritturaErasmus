@@ -65,3 +65,24 @@ export async function restoreModuleVersion(moduleId: string, versionId: string, 
         return { error: "Failed to restore version" };
     }
 }
+
+export async function getAnnotatedVersionsForModules(moduleIds: string[]) {
+    try {
+        const versions = await prisma.moduleVersion.findMany({
+            where: {
+                moduleId: { in: moduleIds },
+                isAnnotated: true
+            },
+            include: {
+                module: {
+                    select: { title: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        return { versions };
+    } catch (e) {
+        console.error("Failed to fetch annotated versions:", e);
+        return { error: "Failed to fetch versions" };
+    }
+}

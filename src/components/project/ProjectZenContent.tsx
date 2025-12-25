@@ -86,10 +86,11 @@ export function ProjectZenContent({
         const text = m.officialText || "";
         const isEmpty = !text || text.replace(/<[^>]+>/g, '').trim().length === 0;
 
-        if (isEmpty && !showEmptyModules && mode === 'READER') return null;
+        // If translation is enabled, we might want to show the module even if "officially" empty, to show the mock
+        if (isEmpty && !showEmptyModules && mode === 'READER' && !enableTranslation) return null;
 
         return (
-            <div key={m.id} className="mb-10 animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <div key={m.id} className="mb-10 animate-in fade-in slide-in-from-bottom-2 duration-700 print:animate-none print:transform-none">
                 <AnnotationLayer 
                     moduleId={m.id} 
                     activeTool={activeTool} 
@@ -102,6 +103,16 @@ export function ProjectZenContent({
                         {m.status === 'AUTHORIZED' && (
                             <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded uppercase border border-blue-100">Official</span>
                         )}
+                        {/* Completion Percentage Badge */}
+                        <span className={clsx(
+                            "px-2 py-0.5 text-[10px] font-bold rounded uppercase border ml-auto",
+                            Math.round(((m.officialText || "").replace(/<[^>]+>/g, '').length / (m.maxCharacters || 3000)) * 100) > 100 
+                                ? "bg-red-50 text-red-600 border-red-100" 
+                                : "bg-slate-50 text-slate-500 border-slate-100"
+                        )}>
+                            {Math.round(((m.officialText || "").replace(/<[^>]+>/g, '').length / (m.maxCharacters || 3000)) * 100)}%
+                        </span>
+                        
                         {enableTranslation && (
                             <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold rounded uppercase border border-amber-100">
                                 Translated to {targetLanguage} (Preview)

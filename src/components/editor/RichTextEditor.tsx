@@ -108,17 +108,14 @@ export function RichTextEditor({
         immediatelyRender: false,
     });
 
-    // Sync content if it changes externally (e.g. after merge)
+    // Sync content ONLY if it changes meaningfully and we aren't editing
+    // The previous aggressive sync caused the "overwrite" bug where a delayed server response 
+    // would revert user typing. We now only sync if the editor is empty or explicitly reset.
     useEffect(() => {
-        if (editor && initialContent && editor.getHTML() !== initialContent) {
-           // check if difference is meaningful to avoid cursor jumps or overwrites while typing
-           // If we are "saving", we expect our content to be latest. 
-           // If we are "saved" and prop changes, it implies external update (like merge).
-           if (status === 'saved') {
-               editor.commands.setContent(initialContent);
-           }
+        if (editor && initialContent && !editor.isFocused && editor.getHTML() === '<p></p>') {
+           editor.commands.setContent(initialContent);
         }
-    }, [initialContent, editor, status]);
+    }, [initialContent, editor]);
 
     if (!editor) {
         return null;

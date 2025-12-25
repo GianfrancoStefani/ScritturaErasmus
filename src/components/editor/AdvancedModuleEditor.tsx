@@ -11,6 +11,12 @@ import { createComment } from "@/app/actions/comments";
 import { format } from "date-fns";
 import clsx from "clsx";
 import { diffWords } from "diff";
+import { translateText } from "@/app/actions/translate";
+
+import { ModuleStatusSelector } from "@/components/modules/ModuleStatusSelector";
+import { ModuleAttachments } from "@/components/modules/ModuleAttachments";
+
+
 
 interface AdvancedModuleEditorProps {
     module: any;
@@ -18,14 +24,15 @@ interface AdvancedModuleEditorProps {
     currentUser: any;
     initialVersions: any[];
     characterLimit?: number;
+    isManager: boolean; // Add isManager prop
 }
 
-export default function AdvancedModuleEditor({ module, partners, currentUser, initialVersions, characterLimit }: AdvancedModuleEditorProps) {
+export default function AdvancedModuleEditor({ module, partners, currentUser, initialVersions, characterLimit, isManager }: AdvancedModuleEditorProps) {
     const [versions, setVersions] = useState<any[]>(initialVersions);
     const [showHistory, setShowHistory] = useState(false);
     const [showTranslate, setShowTranslate] = useState(false);
-    const [selectedLanguage, setSelectedLanguage] = useState(currentUser?.motherTongue || "");
     const [currentContent, setCurrentContent] = useState(module.officialText || "");
+    const [isEditing, setIsEditing] = useState(false);
     
     // Diff logic
     const [showDiff, setShowDiff] = useState(false);
@@ -60,16 +67,6 @@ export default function AdvancedModuleEditor({ module, partners, currentUser, in
         
         const oldText = prevVer ? prevVer.content : ""; // Or empty if it's the first version
         const newText = currentVer.content;
-
-        // Strip HTML for cleaner text diff, or try to diff HTML string. 
-        // For rich text, diffing HTML source is often messy but acceptable for "technical" view.
-        // A better approach for "Text" diff is to use a DOM parser to extract text, but let's try raw HTML string diff first
-        // as highlighting tags changes might be useful or confusing. 
-        // User asked "highlight text differences". 
-        // Let's strip tags for readability using a simple regex: .replace(/<[^>]*>?/gm, '')
-        // But then we lose structure. 
-        // Let's stick to raw string diff for simplicity as requested, 
-        // highlighting added/removed chunks.
         
         const changes = diffWords(oldText.replace(/<[^>]*>?/gm, ' '), newText.replace(/<[^>]*>?/gm, ' '));
         
@@ -89,13 +86,60 @@ export default function AdvancedModuleEditor({ module, partners, currentUser, in
     };
 
     // Translation languages
-    const languages = Array.from(new Set(partners.map(p => p.nation).filter(Boolean)));
+    const languages = Array.from(new Set([
+        ...partners.map(p => p.nation),
+        currentUser?.motherTongue
+    ].filter(Boolean)));
+
+    // Ensure selectedLanguage defaults to motherTongue
+    const [selectedLanguage, setSelectedLanguage] = useState(currentUser?.motherTongue || "en"); 
+    const [translatedContent, setTranslatedContent] = useState<string | null>(null);
+    const [isTranslating, setIsTranslating] = useState(false);
+    const [translationError, setTranslationError] = useState<string | null>(null);
+
+    const handleTranslate = async () => {
+        setIsTranslating(true);
+        setTranslationError(null);
+        // Strip HTML for now? Or keep it? DeepL handles XML/HTML tags partially, but let's just send text content for safety/cost in this v1
+        // Actually, let's try sending the raw HTML if it's not too huge, DeepL might respect tags.
+        // For cost saving, maybe text only? Let's do text only for "Guideline" style reading.
+        // But this is the EDITOR content. 
+        // Let's strip tags for cost safety in this implementation, users just want to understand the text.
+        const textToTranslate = currentContent.replace(/<[^>]*>?/gm, '\n'); 
+        
+        const res = await translateText(textToTranslate, selectedLanguage);
+        setIsTranslating(false);
+        
+        if (res.success) {
+            // Re-wrap in simple paragraphs for readability
+            setTranslatedContent(res.text?.split('\n').map((l: string) => `<p>${l}</p>`).join(''));
+        } else {
+            setTranslationError(res.error || "Unknown error");
+        }
+    };
+
+    // Helper for char count to ensure consistency
+    const getCharCount = (html: string) => html.replace(/<[^>]*>?/gm, '').length;
+    const charCount = getCharCount(currentContent);
+    const maxChars = module.maxCharacters || 3000;
+    const percentage = Math.round((charCount / maxChars) * 100);
 
     return (
         <div className="flex flex-col h-full relative">
             {/* Toolbar Extras */}
-            <div className="flex items-center justify-between p-2 bg-slate-50 border-b border-slate-200">
+            <div className="flex items-center justify-between p-2 bg-slate-50 border-b border-slate-200 gap-4">
                 <div className="flex items-center gap-2">
+                     <ModuleStatusSelector 
+                        moduleId={module.id} 
+                        initialStatus={module.status} 
+                        isManager={isManager} 
+                     />
+                     <div className="h-4 w-px bg-slate-300 mx-2" />
+                     <ModuleAttachments 
+                        moduleId={module.id}
+                        initialAttachments={module.attachments || []}
+                     />
+                     <div className="h-4 w-px bg-slate-300 mx-2" />
                      <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)} className={showHistory ? "bg-slate-200" : ""}>
                         <History size={16} className="mr-1" /> History
                      </Button>
@@ -103,26 +147,53 @@ export default function AdvancedModuleEditor({ module, partners, currentUser, in
                         <Globe size={16} className="mr-1" /> Translate
                      </Button>
                 </div>
-                <div>
-                     <span className="text-xs text-slate-500 mr-4 font-mono">
-                        {currentContent.replace(/<[^>]*>?/gm, '').length} / {module.maxCharacters || 3000} chars 
-                        ({Math.round((currentContent.replace(/<[^>]*>?/gm, '').length / (module.maxCharacters || 3000)) * 100)}%)
+                
+                <div className="flex items-center gap-4">
+                     {/* Always show char count/percentage */}
+                     <span className="text-xs text-slate-500 font-mono flex items-center gap-2">
+                        {charCount} / {maxChars} chars
+                        <span className={clsx("px-1.5 py-0.5 rounded text-[10px] font-bold", percentage > 100 ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-600")}>
+                            {percentage}%
+                        </span>
                      </span>
-                     <Button size="sm" onClick={handleSaveVersion} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                        <Save size={16} className="mr-1" /> Save Version
-                     </Button>
+
+                     {!isEditing ? (
+                        <div className="flex items-center gap-2">
+                             <Button size="sm" onClick={() => setIsEditing(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                                Open Editor
+                             </Button>
+                        </div>
+                     ) : (
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} className="mr-2">
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={handleSaveVersion} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                <Save size={16} className="mr-1" /> Save Version
+                            </Button>
+                        </div>
+                     )}
                 </div>
             </div>
 
             <div className="flex-1 flex overflow-hidden relative">
-                {/* Main Editor */}
-                <div className="flex-1 flex flex-col min-w-0">
-                    <RichTextEditor 
-                        moduleId={module.id} 
-                        initialContent={module.officialText || ""} 
-                        maxChars={module.maxChars || undefined}
-                        onContentChange={(html) => setCurrentContent(html)}
-                    />
+                {/* Main Editor / Preview Area */}
+                <div className="flex-1 flex flex-col min-w-0 bg-white">
+                    {!isEditing ? (
+                        <div className="flex-1 overflow-y-auto">
+                             <div 
+                                className="prose prose-sm max-w-none p-8"
+                                dangerouslySetInnerHTML={{ __html: currentContent || "<p class='text-slate-400 italic'>No official text yet. Click 'Open Editor' to start drafting.</p>" }}
+                            />
+                        </div>
+                    ) : (
+                        <RichTextEditor 
+                            moduleId={module.id} 
+                            initialContent={module.officialText || ""} 
+                            maxChars={module.maxChars || undefined}
+                            onContentChange={(html) => setCurrentContent(html)}
+                        />
+                    )}
                     
                     {/* Post-Deadline Comments Section */}
                     {isDeadlinePassed && (
@@ -218,30 +289,31 @@ export default function AdvancedModuleEditor({ module, partners, currentUser, in
                 <div className="space-y-4">
                     <div>
                         <label className="text-sm font-medium mb-1 block">Translate to:</label>
-                        <select 
-                            className="w-full border rounded p-2" 
-                            value={selectedLanguage}
-                            onChange={(e) => setSelectedLanguage(e.target.value)}
-                            aria-label="Select Language"
-                        >
-                            <option value="">Select Language</option>
-                            {languages.map(l => (
-                                <option key={String(l)} value={String(l)}>{String(l)}</option>
-                            ))}
-                        </select>
+                        <div className="p-2 border rounded bg-slate-100 text-slate-700 font-bold flex justify-between items-center">
+                            <span>{selectedLanguage.toUpperCase()} (Your Language)</span>
+                            {!translatedContent && (
+                                <Button size="sm" onClick={handleTranslate} disabled={isTranslating}>
+                                    {isTranslating ? "Translating..." : "Start Translation"}
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     
-                    {selectedLanguage && (
-                        <div className="bg-slate-50 p-4 rounded border border-slate-200 h-64 overflow-y-auto relative group">
+                    {translationError && (
+                        <div className="p-3 bg-red-50 text-red-600 text-xs rounded border border-red-200">
+                            {translationError}
+                        </div>
+                    )}
+
+                    {selectedLanguage && translatedContent && (
+                        <div className="bg-slate-50 p-4 rounded border border-slate-200 h-96 overflow-y-auto relative group">
                             <div className="absolute top-2 right-2 opacity-50 text-[10px] uppercase font-bold tracking-wider">
                                 {selectedLanguage}
                             </div>
-                            {/* Mock Translation */}
-                            <p className="text-slate-600 leading-relaxed">
-                                [Translated content to {selectedLanguage} would appear here...]
-                                <br/><br/>
-                                {currentContent.replace(/<[^>]*>?/gm, ' ').substring(0, 200)}...
-                            </p>
+                            <div 
+                                className="prose prose-sm max-w-none text-slate-600 leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: translatedContent }}
+                            />
                         </div>
                     )}
                 </div>

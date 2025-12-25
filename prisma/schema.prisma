@@ -457,6 +457,8 @@ model Attachment {
   id              String   @id @default(cuid())
   url             String
   name            String
+  size            Int      @default(0) // Size in bytes
+  mimeType        String?  // e.g. application/pdf
   moduleId        String?
   module          Module?  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   textComponentId String?

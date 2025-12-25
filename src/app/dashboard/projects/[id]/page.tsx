@@ -22,7 +22,8 @@ async function getProject(id: string) {
   const moduleInclude = {
     components: {
         include: { comments: true }
-    }
+    },
+    attachments: true
   };
 
   return await prisma.project.findUnique({

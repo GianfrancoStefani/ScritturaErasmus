@@ -17,7 +17,7 @@ async function getPartnerWithMembers(id: string) {
                 include: {
                     user: true
                 },
-                orderBy: { role: 'asc' }
+                orderBy: { createdAt: 'asc' }
             },
             // Fetch Users directly attached (if any)
             users: true 
@@ -107,7 +107,7 @@ export default async function PartnerDetailsPage({ params }: { params: { id: str
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {members.map(member => (
+                            {members.map((member: any) => (
                                 <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
@@ -126,7 +126,7 @@ export default async function PartnerDetailsPage({ params }: { params: { id: str
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-semibold">
-                                            {member.role}
+                                            {member.projectRole || member.roles?.[0] || '-'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">

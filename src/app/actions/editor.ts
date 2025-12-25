@@ -150,8 +150,7 @@ export async function saveAnnotatedVersion(moduleId: string, annotations: any[])
                 moduleId,
                 content: moduleData.officialText || "",
                 isAnnotated: true,
-                annotations: JSON.stringify(annotations),
-                name: versionName
+                annotations: JSON.stringify(annotations)
             }
         });
 

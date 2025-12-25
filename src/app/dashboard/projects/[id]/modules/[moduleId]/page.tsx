@@ -36,7 +36,9 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
                 orderBy: { createdAt: 'desc' }
             },
             comments: {
-                include: { user: true },
+                orderBy: { createdAt: 'desc' }
+            },
+            attachments: {
                 orderBy: { createdAt: 'desc' }
             }
         }
@@ -72,6 +74,10 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
     
     const isReadOnly = moduleData.commentEndingDate ? new Date() > new Date(moduleData.commentEndingDate) : false;
 
+    const textLength = moduleData.officialText ? moduleData.officialText.replace(/<[^>]*>?/gm, '').length : 0;
+    const maxChars = moduleData.maxCharacters || 3000;
+    const completionPercentage = Math.round((textLength / maxChars) * 100);
+
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)]">
              <div className="mb-4 flex-shrink-0 flex justify-between items-center">
@@ -96,6 +102,7 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
                         userRole={userRole}
                         isManager={isManager}
                         userId={currentUserId}
+                        completionPercentage={completionPercentage}
                     />
                     
                     {mockUser && (
@@ -151,6 +158,7 @@ export default async function ModuleEditorPage({ params, searchParams }: { param
                             currentUser={mockUser}
                             initialVersions={moduleData.versions}
                             characterLimit={moduleData.maxCharacters || 3000} // Mock limit if not present in schema yet
+                            isManager={isManager}
                         />
                      </div>
                 </div>

@@ -14,9 +14,10 @@ interface ModuleHeaderActionsProps {
     userRole: string | null // SUPERVISOR, LEADER, EDITOR, VIEWER, or null
     isManager: boolean
     userId: string
+    completionPercentage: number
 }
 
-export function ModuleHeaderActions({ moduleId, currentStatus, userRole, isManager, userId }: ModuleHeaderActionsProps) {
+export function ModuleHeaderActions({ moduleId, currentStatus, userRole, isManager, userId, completionPercentage }: ModuleHeaderActionsProps) {
     const router = useRouter()
     const [isRoleManagerOpen, setIsRoleManagerOpen] = useState(false)
     const [loadingAction, setLoadingAction] = useState<string | null>(null)
@@ -66,6 +67,7 @@ export function ModuleHeaderActions({ moduleId, currentStatus, userRole, isManag
         <div className="flex items-center gap-3">
             {/* Status Badge */}
             <StatusBadge status={currentStatus} />
+            <CompletionBadge percentage={completionPercentage} />
 
             {/* Workflow Actions */}
             {canAuthorize && (
@@ -128,6 +130,15 @@ function StatusBadge({ status }: { status: string }) {
     return (
         <span className={`text-xs font-bold px-2 py-1 rounded-md uppercase border border-transparent ${colors[status] || colors['TO_DONE']}`}>
             {status.replace('_', ' ')}
+        </span>
+    )
+}
+
+function CompletionBadge({ percentage }: { percentage: number }) {
+    const isOverLimit = percentage > 100
+    return (
+        <span className={`text-xs font-bold px-2 py-1 rounded-md border ${isOverLimit ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+            {percentage}%
         </span>
     )
 }
